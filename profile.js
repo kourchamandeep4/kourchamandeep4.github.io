@@ -26,11 +26,11 @@ window.PROFILE = {
   },
 
   plaque: [
-    ["Trip", "Geelong to Melbourne"],
-    ["Stops", "Seven"],
-    ["Getting around", "Bus, train, taxi, ferry, tram, bike"],
-    ["Largest schema visited", "1,200+ tables"],
-    ["Packed", "Laptop and curiosity"]
+    ["Pipeline", "Source to deploy"],
+    ["Stages", "Seven"],
+    ["Runs on", "SQL, Python, Power BI, GenAI"],
+    ["Largest schema", "1,200+ tables"],
+    ["Status", "Healthy, open to relocation"]
   ],
 
 
@@ -50,7 +50,7 @@ window.PROFILE = {
     ]
   },
 
-  skillsNote: "The bars show how comfortable I am. Five bars means I could teach it.",
+  skillsNote: "Think of this as a table of what I work with: the bars show how comfortable I am, and five bars means I could teach it.",
   skills: [
     { group: "Languages", items: [
       { name: "Python", level: 5 },
@@ -195,7 +195,7 @@ window.PROFILE = {
     { title: "Bachelor of Computer Science (GPA 8.0)", issuer: "University of Jammu, India", year: "2020", link: "" }
   ],
 
-  // "Pick your ride": visitors choose what they care about and get a shorter route.
+  // "Pick your path": visitors choose what they care about and get a shorter route.
   // keywords are matched against project titles, descriptions, results and tools.
   interests: [
     { id: "ai", label: "AI and LLMs",
@@ -209,8 +209,29 @@ window.PROFILE = {
       route: ["about", "skills", "projects", "experience", "contact"] }
   ],
 
+  // The Projects page is a dashboard. Edit these numbers to match your own results.
+  dashboard: {
+    kpis: [
+      { value: "1,200+", label: "tables behind ionLens", note: "live enterprise schema" },
+      { value: "~99%", label: "API cost cut", note: "cache-first design" },
+      { value: "95%", label: "unique entity match", note: "Golden Record" },
+      { value: "90%", label: "less manual work", note: "job classification" },
+      { value: "4-5 h", label: "saved every week", note: "PR-to-PO reporting" },
+      { value: "12", label: "data issues caught", note: "all fixed within 48 h" }
+    ],
+    charts: [
+      { type: "bars", title: "Before and after", sub: "Bars show an index, where the starting point is 100.",
+        items: [
+          { label: "API cost, repeat searches", before: 100, after: 1 },
+          { label: "Manual job categorisation", before: 100, after: 10 },
+          { label: "ionLens query success", before: 0, after: 100, unit: "%" }
+        ] },
+      { type: "donut", title: "Unique entity match", value: 95, sub: "Duplicate job and company records merged into one Golden Record." }
+    ]
+  },
+
   contact: {
-    title: "Made it to Melbourne",
+    title: "Deployed",
     text: "I am open to relocation. If you are hiring for data or AI engineering, or want to talk shop, say hello."
   }
 };

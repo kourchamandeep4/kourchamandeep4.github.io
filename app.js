@@ -45,13 +45,13 @@
 
   /* ---------- the pages, in ride order ---------- */
   const STAGES = [
-    { id: 'station',     nav: 'Start',      place: 'Geelong',        sign: 'Stop 1: Geelong bus stop' },
-    { id: 'about',       nav: 'About',      place: 'Geelong Station', sign: 'Stop 2: Geelong Station platform' },
-    { id: 'skills',      nav: 'Skills',     place: 'On the V/Line',  sign: 'Stop 3: Aboard the train to Melbourne' },
-    { id: 'projects',    nav: 'Projects',   place: 'Williamstown',   sign: 'Stop 4: Coffee break in Williamstown' },
-    { id: 'credentials', nav: 'Awards',     place: 'Docklands',      sign: 'Stop 5: Off the ferry at Docklands' },
-    { id: 'experience',  nav: 'Experience', place: 'Southbank',      sign: 'Stop 6: Southbank and the Eureka Tower' },
-    { id: 'contact',     nav: 'Contact',    place: 'Melbourne',      sign: 'Final stop: Flinders Street, Melbourne' }
+    { id: 'station',     nav: 'Start',      place: 'Source',    sign: 'Stage 1: Source' },
+    { id: 'about',       nav: 'About',      place: 'Ingest',    sign: 'Stage 2: Ingest' },
+    { id: 'skills',      nav: 'Skills',     place: 'Transform', sign: 'Stage 3: Transform with SQL' },
+    { id: 'projects',    nav: 'Projects',   place: 'Dashboard', sign: 'Stage 4: Gold layer and dashboard' },
+    { id: 'experience',  nav: 'Experience', place: 'Quality',   sign: 'Stage 5: Quality checks' },
+    { id: 'credentials', nav: 'Awards',     place: 'Model',     sign: 'Stage 6: Model and AI' },
+    { id: 'contact',     nav: 'Contact',    place: 'Deploy',    sign: 'Final stage: Deploy' }
   ];
 
   /* ---------- page builders ---------- */
@@ -99,11 +99,11 @@
           h('p', { class: 'role', text: [P.role, P.location].filter(Boolean).join(' in ') }),
           h('p', { class: 'tagline', text: P.tagline }),
           h('div', { class: 'cta' },
-            h('a', { class: 'btn primary', href: '#about', text: 'Start the trip' }),
+            h('a', { class: 'btn primary', href: '#about', text: 'Run the pipeline' }),
             h('a', { class: 'btn', href: '#projects', text: 'Jump to projects' }),
             L.cv ? ext(L.cv, 'Download CV', 'btn') : null)),
-        h('aside', { class: 'plaque', 'aria-label': 'Trip details' },
-          h('h3', { text: 'Trip details' }),
+        h('aside', { class: 'plaque', 'aria-label': 'Pipeline info' },
+          h('h3', { text: 'Pipeline info' }),
           h('dl', null, plaque.map(([k, v]) => h('div', null, h('dt', { text: k }), h('dd', { text: v })))))));
   }
 
@@ -112,8 +112,8 @@
     return page(1, heading(1, a.title || 'About me'),
       h('div', { class: 'about-grid' },
         h('div', { class: 'prose' }, (a.paragraphs || []).map(t => h('p', { text: t }))),
-        h('aside', { class: 'rider', 'aria-label': 'Traveller profile' },
-          h('h3', { text: 'Traveller profile' }),
+        h('aside', { class: 'rider', 'aria-label': 'Engineer profile' },
+          h('h3', { text: 'Engineer profile' }),
           h('dl', null, (a.facts || []).map(([k, v]) => h('div', null, h('dt', { text: k }), h('dd', { text: v })))))));
   }
 
@@ -129,11 +129,30 @@
           h('ul', null, (g.items || []).map(it => h('li', null, h('span', { text: it.name }), it.level ? clicks(it.level) : null)))))));
   }
 
+  function barsChart(c) {
+    return h('div', { class: 'panel' }, h('h3', { text: c.title }), h('p', { class: 'panel-sub', text: c.sub || '' }),
+      (c.items || []).map(it => h('div', { class: 'brow' },
+        h('div', { class: 'blabel' }, h('span', { text: it.label }), h('b', { text: it.before + ' to ' + it.after + (it.unit || '') })),
+        h('div', { class: 'bar before' }, h('i', { style: '--w:' + clamp(it.before, 0, 100) + '%' })),
+        h('div', { class: 'bar after' }, h('i', { style: '--w:' + clamp(Math.max(it.after, 1.5), 0, 100) + '%' })))),
+      h('p', { class: 'legend' }, h('span', { class: 'k before' }), 'Before', h('span', { class: 'k after' }), 'After'));
+  }
+  function donutChart(c) {
+    const r = 54, C = 2 * Math.PI * r;
+    const svg = sv('svg', { viewBox: '0 0 140 140', class: 'donut', role: 'img', 'aria-label': c.title + ': ' + c.value + ' percent' });
+    svg.append(sv('circle', { cx: 70, cy: 70, r, fill: 'none', stroke: 'rgba(120,170,200,.18)', 'stroke-width': 16 }),
+      sv('circle', { class: 'arc', cx: 70, cy: 70, r, fill: 'none', stroke: 'currentColor', 'stroke-width': 16, 'stroke-linecap': 'round', 'stroke-dasharray': (C * c.value / 100).toFixed(1) + ' ' + C.toFixed(1), transform: 'rotate(-90 70 70)', style: '--len:' + (C * c.value / 100).toFixed(1) + ';--circ:' + C.toFixed(1) }));
+    const t = sv('text', { x: 70, y: 78, 'text-anchor': 'middle', class: 'donut-v' }); t.textContent = c.value + '%'; svg.append(t);
+    return h('div', { class: 'panel center' }, h('h3', { text: c.title }), svg, h('p', { class: 'panel-sub', text: c.sub || '' }));
+  }
+
   function secProjects() {
-    const list = P.projects || [];
+    const list = P.projects || [], D = P.dashboard || {};
+    const kpis = h('div', { class: 'kpis' }, (D.kpis || []).map(k => h('div', { class: 'kpi' }, h('b', { text: k.value }), h('span', { text: k.label }), k.note ? h('small', { text: k.note }) : null)));
+    const charts = h('div', { class: 'panels' }, (D.charts || []).map(c => c.type === 'donut' ? donutChart(c) : barsChart(c)));
     const tickets = h('div', { class: 'tickets' }, list.map((p, i) =>
       h('article', { class: 'ticket' },
-        h('div', { class: 'stub', 'aria-hidden': 'true' }, h('span', { text: 'TICKET' }), h('b', { text: String(i + 1).padStart(2, '0') })),
+        h('div', { class: 'stub', 'aria-hidden': 'true' }, h('span', { text: 'PROJECT' }), h('b', { text: String(i + 1).padStart(2, '0') })),
         h('div', { class: 'tbody' },
           h('h3', { text: p.title }),
           h('p', { text: p.blurb }),
@@ -142,14 +161,26 @@
           h('div', { class: 'links' },
             p.repo ? ext(p.repo, 'View repository', 'btn small') : null,
             p.demo ? ext(p.demo, 'Open live demo', 'btn small primary') : null)))));
+    // slicer: filter the project cards by tool, like a dashboard filter
+    const tools = [...new Set(list.flatMap(p => p.tools || []))];
+    const active = new Set();
+    const cards = Array.from(tickets.children);
+    const apply = () => {
+      cards.forEach((c, i) => c.classList.toggle('hide', active.size > 0 && !(list[i].tools || []).some(t => active.has(t))));
+      $$('.slicers button', slicers).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t ? active.has(b.dataset.t) : active.size === 0)));
+    };
+    const slicers = h('div', { class: 'slicers', role: 'group', 'aria-label': 'Filter projects by tool' }, h('span', { text: 'Filter by tool' }),
+      h('button', { type: 'button', 'aria-pressed': 'true', text: 'All', onclick: () => { active.clear(); apply(); } }),
+      tools.map(t => h('button', { type: 'button', 'data-t': t, 'aria-pressed': 'false', text: t, onclick: () => { active.has(t) ? active.delete(t) : active.add(t); apply(); } })));
     const live = (P.github && P.github.showLiveRepos && P.github.user)
       ? h('div', { class: 'live', id: 'live' }, h('h3', { text: 'Fresh off the build line' }), h('p', { text: 'Latest public repositories, loaded live from GitHub.' }), h('div', { class: 'repos', id: 'repos' }))
       : null;
-    return page(3, heading(3, 'Projects'), tickets, live);
+    const head = h('div', { class: 'dash-head' }, h('span', { class: 'dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')), h('b', { text: 'projects_dashboard' }), h('small', { text: 'Last refreshed ' + new Date().toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) }));
+    return page(3, heading(3, 'Projects'), h('div', { class: 'dash' }, head, kpis, charts, slicers, tickets), live);
   }
 
   function secExperience() {
-    return page(5, heading(5, P.experienceTitle || 'Experience and education'),
+    return page(4, heading(4, P.experienceTitle || 'Experience and education'),
       h('div', { class: 'jobs' }, (P.experience || []).map(j =>
         h('article', { class: 'job' },
           h('p', { class: 'when' }, j.when || '', j.where ? h('small', { text: j.where }) : null),
@@ -161,7 +192,7 @@
   function secCreds() {
     const stats = P.stats || [];
     const creds = P.credentials || [];
-    return page(4, heading(4, P.credentialsTitle || 'Ride stats and awards'),
+    return page(5, heading(5, P.credentialsTitle || 'Ride stats and awards'),
       stats.length ? h('div', { class: 'stats' }, stats.map(s => h('div', { class: 'stat' }, h('b', { text: s.value }), h('span', { text: s.label })))) : null,
       creds.length ? h('ul', { class: 'creds' }, creds.map(c => h('li', { class: 'cred' },
         h('div', null, h('b', { text: c.title }), h('span', { text: c.issuer || '' })),
@@ -180,6 +211,12 @@
     return page(6, heading(6, c.title || 'Exit through the gift shop'),
       c.text ? h('p', { class: 'contact-text', text: c.text }) : null,
       L.email ? h('a', { class: 'mail', href: 'mailto:' + L.email, text: L.email }) : null,
+      h('div', { class: 'release' }, h('b', { text: 'Release notes: v1.0 shipped' }),
+        h('ul', null,
+          h('li', null, h('span', { class: 'ok', text: 'OK' }), 'Resume: ' + [P.role, P.location].filter(Boolean).join(', ')),
+          h('li', null, h('span', { class: 'ok', text: 'OK' }), (P.projects || []).length + ' projects deployed, see the dashboard'),
+          h('li', null, h('span', { class: 'ok', text: 'OK' }), (P.status || 'Available') + '. Say hello.')),
+        h('div', { class: 'links' }, h('a', { class: 'btn small primary', href: '#projects', text: 'Open the projects dashboard' }), L.cv ? ext(L.cv, 'Download CV', 'btn small') : null)),
       h('div', { class: 'souvenirs' },
         L.email ? copy : null,
         L.linkedin ? ext(L.linkedin, 'LinkedIn', 'btn') : null,
@@ -194,7 +231,7 @@
   if (meta) meta.setAttribute('content', P.tagline || (P.name + ' portfolio'));
   $('#topbar').append(...topbar());
   const main = $('#main');
-  main.append(secHero(), secAbout(), secSkills(), secProjects(), secCreds(), secExperience(), secContact());
+  main.append(secHero(), secAbout(), secSkills(), secProjects(), secExperience(), secCreds(), secContact());
   const pages = $$('.page', main);
   const LAST = pages.length - 1;
 
@@ -216,206 +253,227 @@
     } catch (e) { const live = $('#live'); if (live) live.remove(); }
   })();
 
+
   /* =====================================================================
-     THE JOURNEY
-     A trip from a Geelong bus stop to Flinders Street in Melbourne. Each stop is a page.
-     Between two pages a full-screen scene plays: the vehicle for that leg (bus, train,
-     taxi, ferry, tram, bike) rides from one landmark to the next. The bar at the bottom
-     is the route: one pin per stop, plus the Next and Previous arrows.
+     THE PIPELINE
+     Between two pages a full-screen scene plays, and each scene is a piece of data
+     engineering: ingest, a SQL query, a lakehouse, quality checks, an AI retrieval run
+     with robots, and finally a flying car that delivers the resume and the projects.
+     The bar at the bottom is the pipeline: one node per stage.
   ===================================================================== */
   const bar = $('#pager');
-  const DH = 216, GYD = 168, PARK = 56, ROAD = '#2a3b4a';
-  const COL = { sun: '#ffd24a', coral: '#ff7a45', sea: '#4fd6c8', gum: '#2f8a63', sand: '#f4e4c1', ink: '#0c1c2b' };
+  const COL = { cy: '#35e0e8', gr: '#5cff9d', pu: '#9b7bff', am: '#ffc93c', rd: '#ff5d73', ink: '#07101c', panel: '#0e1a2b', line: '#24405c', mute: '#7fa3bd' };
+  const WL = 2900;                         // length of every scene, in scene units
 
   const R = (x, y, w, hh, fill, ex) => sv('rect', Object.assign({ x, y, width: w, height: hh, fill }, ex));
   const PA = (d, fill, ex) => sv('path', Object.assign({ d, fill }, ex));
   const CI = (cx, cy, r, fill, ex) => sv('circle', Object.assign({ cx, cy, r, fill }, ex));
   const LN = (x1, y1, x2, y2, stroke, w, ex) => sv('line', Object.assign({ x1, y1, x2, y2, stroke, 'stroke-width': w, 'stroke-linecap': 'round' }, ex));
   const G = (attrs, ...kids) => { const g = sv('g', attrs || {}); kids.flat().forEach(k => k && g.append(k)); return g; };
+  const TX = (x, y, str, size, fill, anchor, ex) => {
+    const t = sv('text', Object.assign({ x, y, fill, 'font-size': size, 'text-anchor': anchor || 'start', 'font-family': '"Share Tech Mono", ui-monospace, Menlo, monospace' }, ex));
+    t.textContent = str; return t;
+  };
+  const mix = (a, b, t) => { const p = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)); const A = p(a), B = p(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+  const frac = v => v - Math.floor(v);
+  const sm = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 
-  /* ---------- vehicles: nose points right (+x), wheels touch y = 0 ---------- */
-  function wheel(g, cx, r, wheels) {
-    const w = sv('g');
-    w.append(CI(cx, -r, r, '#14202b', { stroke: '#cfd8df', 'stroke-width': 2 }), CI(cx, -r, 2.2, '#cfd8df'));
-    for (let k = 0; k < 3; k++) { const a = k * Math.PI / 3; w.append(LN(cx - (r - 2) * Math.cos(a), -r - (r - 2) * Math.sin(a), cx + (r - 2) * Math.cos(a), -r + (r - 2) * Math.sin(a), '#cfd8df', 1.3)); }
-    g.append(w); wheels.push({ g: w, cx, cy: -r });
+  /* ---------- small icons ---------- */
+  function dbIcon(x, y, c) {
+    return G(null, PA('M' + (x - 34) + ' ' + (y - 22) + ' v44 a34 11 0 0 0 68 0 v-44 Z', COL.panel, { stroke: c, 'stroke-width': 2.5 }),
+      sv('ellipse', { cx: x, cy: y - 22, rx: 34, ry: 11, fill: '#13263b', stroke: c, 'stroke-width': 2.5 }),
+      PA('M' + (x - 34) + ' ' + (y - 4) + ' a34 11 0 0 0 68 0', 'none', { stroke: c, 'stroke-width': 1.6, opacity: 0.6 }), TX(x, y + 44, 'database', 13, COL.mute, 'middle'));
   }
-  const heads = (g, xs, y) => xs.forEach(x => g.append(CI(x, y, 4.2, '#ffe2c6')));
+  function apiIcon(x, y, c) { return G(null, R(x - 36, y - 26, 72, 52, 10, { fill: COL.panel, stroke: c, 'stroke-width': 2.5 }), TX(x, y + 8, '{ }', 28, c, 'middle'), TX(x, y + 44, 'REST API', 13, COL.mute, 'middle')); }
+  function fileIcon(x, y, c) { return G(null, PA('M' + (x - 28) + ' ' + (y - 30) + ' h38 l18 18 v42 h-56 Z', COL.panel, { stroke: c, 'stroke-width': 2.5 }), TX(x, y + 8, 'CSV', 20, c, 'middle'), TX(x, y + 44, 'files', 13, COL.mute, 'middle')); }
+  function tableIcon(x, y, w, c, fill) { return G(null, R(x, y, w, w * 0.7, fill || '#13263b', { rx: 2, stroke: c, 'stroke-width': 1.2 }), LN(x, y + w * 0.23, x + w, y + w * 0.23, c, 1), LN(x + w * 0.4, y, x + w * 0.4, y + w * 0.7, c, 1)); }
+  function pipe(x0, x1, y, hh) { return G(null, R(x0, y - hh / 2, x1 - x0, hh, '#0d2236', { stroke: COL.line, 'stroke-width': 2 }), R(x0, y - hh / 2 + 3, x1 - x0, 3, 'rgba(255,255,255,.1)')); }
+  function label(x, y, str, c) { return TX(x, y, str, 15, c || COL.mute, 'middle', { 'letter-spacing': 2 }); }
 
-  function vBus() {
-    const g = sv('g'), wheels = [];
-    g.append(R(-66, -50, 132, 42, '#ff7a45', { rx: 9 }), R(-66, -24, 132, 5, '#fff3dc'), R(-66, -12, 132, 5, '#c4521e'));
-    for (let i = 0; i < 5; i++) g.append(R(-58 + i * 20, -43, 17, 14, '#a9d8ee', { rx: 2 }));
-    heads(g, [-49, -9, 31], -34);
-    g.append(PA('M44 -44 L62 -44 Q66 -44 66 -39 L66 -28 L44 -28 Z', '#a9d8ee'), R(60, -22, 7, 5, COL.sun, { rx: 2 }), R(-30, -54, 26, 5, '#e65a22', { rx: 2 }));
-    wheel(g, -40, 9, wheels); wheel(g, 40, 9, wheels);
-    return { g, wheels };
+  /* ---------- robots and the flying car ---------- */
+  function robot(color) {
+    const g = sv('g'), legL = LN(-8, -14, -8, 0, color, 6), legR = LN(8, -14, 8, 0, color, 6);
+    const crate = G({ style: 'display:none' }, R(-14, -52, 28, 22, '#0e1a2b', { stroke: COL.am, 'stroke-width': 2, rx: 3 }), tableIcon(-9, -48, 18, COL.am));
+    g.append(legL, legR, R(-17, -48, 34, 34, color, { rx: 8 }), R(-11, -41, 22, 8, '#07101c', { rx: 3 }), CI(-5, -37, 2.5, COL.gr), CI(5, -37, 2.5, COL.gr),
+      R(-14, -76, 28, 24, '#cfe4f2', { rx: 7 }), R(-9, -69, 18, 8, '#07101c', { rx: 3 }), CI(-4, -65, 2.2, COL.cy), CI(4, -65, 2.2, COL.cy),
+      LN(0, -76, 0, -88, '#cfe4f2', 2.5), CI(0, -90, 3.5, COL.rd), LN(-17, -40, -26, -28, color, 5), LN(17, -40, 26, -28, color, 5), crate);
+    return { g, legL, legR, crate };
   }
-  function vTrain() {
-    const g = sv('g'), wheels = [];
-    // carriage
-    g.append(R(-124, -50, 112, 42, '#2a9d8f', { rx: 6 }), R(-124, -24, 112, 5, COL.sun), R(-124, -13, 112, 5, '#1b6f66'));
-    for (let i = 0; i < 5; i++) g.append(R(-116 + i * 21, -43, 17, 14, '#c9eef0', { rx: 2 }));
-    heads(g, [-107, -65, -23], -34);
-    g.append(R(-14, -30, 6, 4, '#555'));
-    // locomotive with sloped nose
-    g.append(PA('M-8 -52 L78 -52 Q96 -52 104 -30 L108 -8 L-8 -8 Z', '#e9f5f3'), PA('M-8 -52 L78 -52 Q96 -52 104 -30 L-8 -30 Z', '#2a9d8f'), R(-8, -24, 116, 5, COL.sun),
-      PA('M72 -46 L90 -46 Q98 -44 101 -34 L72 -34 Z', '#c9eef0'), R(-2, -45, 18, 13, '#c9eef0', { rx: 2 }), R(24, -45, 18, 13, '#c9eef0', { rx: 2 }),
-      CI(104, -16, 3.5, '#fff3b0'), R(-8, -58, 40, 6, '#1b6f66', { rx: 2 }));
-    heads(g, [7, 33], -36);
-    [-104, -80, 4, 28, 82].forEach(x => wheel(g, x, 7, wheels));
-    return { g, wheels };
+  function walk(rb, x, y, t, carry, dir) {
+    const sw = Math.sin(t / 110) * 8;
+    rb.g.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + (y + Math.abs(Math.sin(t / 110)) * -3).toFixed(1) + ') scale(' + (dir || 1) + ' 1)');
+    rb.legL.setAttribute('x2', -8 + sw); rb.legR.setAttribute('x2', 8 - sw);
+    rb.crate.style.display = carry ? '' : 'none';
   }
-  function vTram() {
-    const g = sv('g'), wheels = [];
-    g.append(LN(-30, -58, -10, -86, '#b9c4cc', 2.5), LN(-10, -86, 20, -86, '#b9c4cc', 2.5),
-      R(-92, -56, 184, 48, '#f5f1ea', { rx: 14 }), R(-92, -56, 184, 14, '#d9382f', { rx: 10 }), R(-92, -18, 184, 8, '#d9382f'));
-    for (let i = 0; i < 7; i++) g.append(R(-82 + i * 24, -41, 19, 17, '#9fd0ea', { rx: 3 }));
-    heads(g, [-72, -24, 48], -31);
-    g.append(PA('M70 -42 L88 -42 Q92 -42 92 -36 L92 -22 L70 -22 Z', '#9fd0ea'), CI(88, -14, 3, '#fff3b0'));
-    [-62, -36, 36, 62].forEach(x => wheel(g, x, 6.5, wheels));
-    return { g, wheels };
+  function flyingCar() {
+    const g = sv('g'), flame = PA('M-56 -6 L-84 -10 L-56 -16 Z', COL.am, { opacity: 0.9 });
+    g.append(flame, PA('M-58 0 Q-60 -18 -38 -22 L-10 -40 Q10 -48 34 -38 L58 -22 Q74 -18 72 0 Z', COL.cy), PA('M-10 -38 Q8 -44 28 -36 L40 -24 L-20 -24 Z', '#07101c', { opacity: 0.85 }),
+      PA('M-4 -34 Q8 -39 22 -33 L28 -26 L-8 -26 Z', '#9ee8ff', { opacity: 0.55 }), R(-58, -6, 130, 5, COL.pu, { rx: 2 }), CI(66, -10, 4, '#fff6c9'), CI(-30, 6, 6, '#07101c', { stroke: COL.cy, 'stroke-width': 2 }), CI(40, 6, 6, '#07101c', { stroke: COL.cy, 'stroke-width': 2 }),
+      PA('M-34 10 Q5 24 46 10', 'none', { stroke: COL.cy, 'stroke-width': 3, opacity: 0.5, 'stroke-linecap': 'round' }));
+    return { g, flame };
   }
-  function vFerry() {
-    const g = sv('g'), wheels = [];
-    g.append(PA('M-92 -16 L90 -16 L78 5 L-80 5 Z', '#1f6f54'), R(-86, -12, 168, 4, COL.sand),
-      R(-64, -46, 118, 30, COL.sand, { rx: 4 }), R(-40, -66, 70, 20, COL.sand, { rx: 4 }), R(-36, -72, 62, 6, '#1f6f54', { rx: 2 }),
-      R(2, -88, 17, 18, COL.sun, { rx: 2 }), R(2, -90, 17, 4, '#14202b'), LN(-70, -16, -70, -26, '#14202b', 1.5), LN(60, -16, 60, -26, '#14202b', 1.5));
-    for (let i = 0; i < 6; i++) g.append(R(-58 + i * 18, -40, 12, 11, '#2b6f8a', { rx: 2 }));
-    for (let i = 0; i < 4; i++) g.append(R(-32 + i * 17, -62, 11, 9, '#2b6f8a', { rx: 2 }));
-    heads(g, [-52, -16, 20], -45);
-    g.append(PA('M-92 4 q-12 -3 -24 2 M-92 -2 q-16 -3 -30 3', 'none', { stroke: 'rgba(255,255,255,.65)', 'stroke-width': 2, 'stroke-linecap': 'round' }));
-    return { g, wheels, y: 5, bob: true };
-  }
-  function vTaxi() {
-    const g = sv('g'), wheels = [];
-    g.append(PA('M-44 -14 L-44 -26 Q-44 -30 -38 -31 L-24 -33 L-14 -48 Q-12 -51 -8 -51 L22 -51 Q27 -51 30 -47 L38 -33 L50 -30 Q54 -29 54 -24 L54 -14 Z', '#ffd24a'),
-      PA('M-11 -35 L-4 -46 L8 -46 L8 -35 Z M13 -35 L13 -46 L22 -46 L30 -35 Z', '#a9d8ee'), R(-9, -58, 22, 7, '#fff3b0', { rx: 2 }), R(-44, -22, 98, 3, '#14202b'),
-      CI(51, -24, 2.8, '#fff3b0'), CI(-42, -25, 2.5, '#ff4d4d'));
-    heads(g, [-1, 19], -41);
-    wheel(g, -26, 9, wheels); wheel(g, 32, 9, wheels);
-    return { g, wheels };
-  }
-  function vUte() {
-    const g = sv('g'), wheels = [];
-    g.append(R(-58, -46, 74, 4, '#14202b'), R(-52, -52, 62, 7, '#ff7a45', { rx: 3 }), PA('M-54 -50 Q-30 -62 10 -52', 'none'),
-      PA('M-62 -14 L-62 -34 L-6 -34 L-6 -14 Z', '#c98a3d'), R(-62, -36, 58, 4, '#a76f2c'),
-      PA('M-6 -14 L-6 -42 L10 -46 L30 -46 L40 -32 L56 -28 Q60 -27 60 -22 L60 -14 Z', '#e0a860'),
-      PA('M12 -33 L14 -42 L28 -42 L35 -33 Z', '#a9d8ee'), CI(56, -22, 2.8, '#fff3b0'), R(-6, -22, 66, 3, '#14202b'));
-    g.append(PA('M-56 -52 Q-12 -60 36 -53 Q-12 -50 -56 -52 Z', '#4fd6c8'));
-    heads(g, [21], -38);
-    wheel(g, -38, 9, wheels); wheel(g, 34, 9, wheels);
-    return { g, wheels };
-  }
-  const LEGS = [
-    { name: 'Bus', route: 'Geelong bus stop to Geelong Station', km: 3, speed: 50, build: vBus, surface: 'road' },
-    { name: 'Train', route: 'Geelong to Footscray', km: 70, speed: 140, build: vTrain, surface: 'rail' },
-    { name: 'Taxi', route: 'Footscray to Williamstown', km: 8, speed: 60, build: vTaxi, surface: 'road' },
-    { name: 'Ferry', route: 'Williamstown to Docklands', km: 12, speed: 26, build: vFerry, surface: 'water' },
-    { name: 'Tram', route: 'Docklands to Southbank', km: 3, speed: 35, build: vTram, surface: 'tram' },
-    { name: 'Bike', route: 'Southbank to Flinders Street', km: 1, speed: 18, build: vBike, surface: 'road' }
-  ];
-  // landmark for each stop, drawn around x
-  const LANDMARKS = [x => sBusStop(x), x => sGeelongStation(x), x => sCountry(x), x => sCafe(x), x => sDocklands(x), x => sEureka(x), x => sFlinders(x)];
+  function docSprite(w, title, color) { return G(null, R(-w / 2, -w * 0.6, w, w * 1.2, '#f4f7fb', { rx: 5, stroke: color, 'stroke-width': 3 }), R(-w / 2 + 8, -w * 0.6 + 10, w * 0.5, 7, color, { rx: 2 }), ...[0, 1, 2, 3].map(i => R(-w / 2 + 8, -w * 0.6 + 26 + i * 12, w - 16 - (i % 2) * 12, 4, '#b7c6d4', { rx: 2 })), TX(0, w * 0.52, title, 13, '#0e1a2b', 'middle', { 'font-weight': 700 })); }
 
+  /* ---------- the six scenes ---------- */
+  // each returns { update(q, t) } and adds its objects to world (moves with the camera) and screen (fixed)
+  const SCENES = [];
 
-  /* ---------- scenery ---------- */
-  function gum(x, s) {
-    return G({ transform: 'translate(' + x + ' ' + GYD + ') scale(' + (s || 1) + ')' },
-      R(-3, -44, 6, 44, '#e8dcc0', { rx: 2 }), CI(-12, -50, 15, COL.gum), CI(10, -56, 17, '#37a073'), CI(0, -68, 14, '#2f8a63'));
-  }
-  function sBusStop(x) {
-    return G(null, gum(x - 80, 1.1), gum(x + 76, 0.8),
-      R(x - 3, GYD - 70, 5, 70, '#c3ccd3'), R(x - 18, GYD - 84, 36, 22, COL.coral, { rx: 5 }), CI(x, GYD - 73, 6, '#fff3dc'), R(x - 3.5, GYD - 76, 7, 6, COL.coral, { rx: 1 }),
-      R(x - 62, GYD - 58, 52, 5, '#6c8aa0', { rx: 2 }), R(x - 60, GYD - 53, 3, 53, '#6c8aa0'), R(x - 14, GYD - 53, 3, 53, '#6c8aa0'),
-      R(x - 56, GYD - 19, 40, 4, '#c98a3d', { rx: 1 }), R(x - 56, GYD - 15, 3, 15, '#7a5424'), R(x - 22, GYD - 15, 3, 15, '#7a5424'));
-  }
-  function sFlinders(x) {
-    const g = G(null, R(x - 70, GYD - 52, 140, 52, '#b98338', { opacity: 0.95 }), R(x - 22, GYD - 86, 44, 36, '#c98f3f'),
-      PA('M' + (x - 20) + ' ' + (GYD - 86) + ' A20 20 0 0 1 ' + (x + 20) + ' ' + (GYD - 86) + ' Z', '#7fc4b5'), LN(x, GYD - 106, x, GYD - 118, '#c3ccd3', 2), PA('M' + x + ' ' + (GYD - 118) + ' l10 3 l-10 3 Z', COL.coral),
-      CI(x, GYD - 68, 9, '#fff3dc', { stroke: '#7a5424', 'stroke-width': 1.5 }), LN(x, GYD - 68, x, GYD - 74, '#14202b', 1.4), LN(x, GYD - 68, x + 4, GYD - 66, '#14202b', 1.4));
-    for (let i = 0; i < 6; i++) g.append(R(x - 64 + i * 22, GYD - 38, 12, 38, '#7a5424', { rx: 6, opacity: 0.85 }));
-    return g;
-  }
-  function sCountry(x) {
-    const g = G(null);
-    g.append(PA('M' + (x - 150) + ' ' + (GYD - 8) + ' Q' + (x - 60) + ' ' + (GYD - 56) + ' ' + (x + 10) + ' ' + (GYD - 14) + ' Q' + (x + 70) + ' ' + (GYD - 46) + ' ' + (x + 160) + ' ' + (GYD - 8) + ' Z', '#1d3d3a'),
-      gum(x - 96, 0.95), gum(x + 100, 1.15), gum(x + 70, 0.7),
-      R(x - 40, GYD - 66, 112, 5, '#6c8aa0', { rx: 2 }), R(x - 36, GYD - 61, 3, 61, '#6c8aa0'), R(x + 62, GYD - 61, 3, 61, '#6c8aa0'),
-      R(x - 26, GYD - 82, 56, 16, '#2a9d8f', { rx: 3 }), R(x - 20, GYD - 78, 44, 8, '#e9f5f3', { rx: 2 }));
-    // kangaroo crossing sign
-    g.append(R(x - 108, GYD - 36, 3, 36, '#c3ccd3'), PA('M' + (x - 106) + ' ' + (GYD - 70) + ' l18 18 l-18 18 l-18 -18 Z', COL.sun, { stroke: '#14202b', 'stroke-width': 1.5 }),
-      PA('M' + (x - 114) + ' ' + (GYD - 50) + ' q4 -12 12 -12 l6 -6 l2 5 l-3 3 q4 4 2 12 l-5 10 l-3 -4 l2 -7 l-6 2 l-4 8 l-3 -3 Z', '#14202b'));
-    return g;
-  }
-  function sCafe(x) {
-    const g = G(null), aw = [];
-    g.append(R(x - 58, GYD - 70, 116, 70, '#26394a'), R(x - 62, GYD - 78, 124, 10, '#1a2a38', { rx: 2 }),
-      R(x - 48, GYD - 42, 54, 30, '#ffd24a', { opacity: 0.55, rx: 3 }), R(x + 14, GYD - 46, 26, 46, '#12202c', { rx: 3 }), CI(x + 34, GYD - 22, 1.8, COL.sun));
-    for (let i = 0; i < 8; i++) aw.push(PA('M' + (x - 64 + i * 16) + ' ' + (GYD - 66) + ' l16 0 l3 14 l-16 0 Z', i % 2 ? COL.sand : COL.coral));
-    g.append(...aw);
-    g.append(R(x - 24, GYD - 100, 48, 20, '#12202c', { rx: 6, stroke: COL.sun, 'stroke-width': 1.5 }),
-      PA('M' + (x - 9) + ' ' + (GYD - 94) + ' h14 v8 q0 5 -7 5 q-7 0 -7 -5 Z', COL.sand), PA('M' + (x + 5) + ' ' + (GYD - 92) + ' q5 0 5 4 q0 4 -5 4', 'none', { stroke: COL.sand, 'stroke-width': 1.6 }));
-    ['-6', '0', '6'].forEach((dx, i) => g.append(PA('M' + (x + +dx) + ' ' + (GYD - 104) + ' q-4 -6 0 -11 q4 -5 0 -10', 'none', { class: 'steam s' + i, stroke: 'rgba(255,255,255,.7)', 'stroke-width': 1.6, 'stroke-linecap': 'round' })));
-    g.append(R(x - 100, GYD - 34, 3, 34, '#c3ccd3'), R(x - 112, GYD - 40, 28, 7, '#6c8aa0', { rx: 2 }), gum(x + 100, 0.9));
-    return g;
-  }
-  function sQuay(x) {
-    const g = G(null);
-    g.append(R(x - 76, GYD - 10, 130, 7, '#7a5424', { rx: 2 }));
-    [-66, -30, 6, 42].forEach(dx => g.append(R(x + dx, GYD - 3, 5, 20, '#4a3418')));
-    g.append(R(x - 54, GYD - 54, 58, 44, '#c98f3f'), R(x - 58, GYD - 62, 66, 8, '#a76f2c', { rx: 2 }), R(x - 44, GYD - 44, 14, 16, '#a9d8ee', { rx: 2 }), R(x - 20, GYD - 44, 14, 16, '#a9d8ee', { rx: 2 }),
-      LN(x + 24, GYD - 10, x + 24, GYD - 70, '#c3ccd3', 2.5), PA('M' + (x + 24) + ' ' + (GYD - 70) + ' l22 6 l-22 6 Z', COL.coral), CI(x + 40, GYD - 14, 4, '#14202b'), CI(x + 40, GYD - 18, 3, '#14202b'));
-    for (let i = 0; i < 3; i++) g.append(PA('M' + (x - 90 + i * 22) + ' ' + (GYD - 96 - i * 6) + ' q5 -5 10 0 q5 -5 10 0', 'none', { class: 'bird', stroke: '#e8dcc0', 'stroke-width': 1.6, 'stroke-linecap': 'round' }));
-    return g;
-  }
-  function vBike() {
-    const g = sv('g'), wheels = [];
-    wheel(g, -22, 13, wheels); wheel(g, 24, 13, wheels);
-    g.append(PA('M-22 -13 L-4 -13 L10 -34 L-8 -34 Z M-4 -13 L24 -13 L12 -34 M10 -34 L16 -38', 'none', { stroke: '#ff7a45', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }),
-      LN(-10, -37, 0, -37, '#14202b', 4), LN(14, -38, 22, -34, '#14202b', 3),
-      LN(-3, -36, -3, -52, '#2a9d8f', 6), LN(-3, -50, 14, -38, '#ffe2c6', 4), LN(-4, -36, 6, -22, '#26394a', 5), LN(6, -22, 2, -14, '#26394a', 5), CI(0, -61, 6, '#ffe2c6'), PA('M-6 -62 q6 -9 12 0 Z', '#ffd24a'));
-    return { g, wheels, bike: true };
-  }
-  function sGeelongStation(x) {
-    return G(null, gum(x + 90, 0.8),
-      R(x - 66, GYD - 46, 132, 46, '#a4523a'), PA('M' + (x - 72) + ' ' + (GYD - 46) + ' L' + x + ' ' + (GYD - 66) + ' L' + (x + 72) + ' ' + (GYD - 46) + ' Z', '#6b2f22'),
-      R(x - 14, GYD - 100, 28, 40, '#b8664a'), PA('M' + (x - 18) + ' ' + (GYD - 100) + ' L' + x + ' ' + (GYD - 120) + ' L' + (x + 18) + ' ' + (GYD - 100) + ' Z', '#6b2f22'),
-      CI(x, GYD - 84, 8, '#fff3dc', { stroke: '#3a1a12', 'stroke-width': 1.5 }), LN(x, GYD - 84, x, GYD - 89, '#14202b', 1.4), LN(x, GYD - 84, x + 3, GYD - 82, '#14202b', 1.4),
-      R(x - 56, GYD - 34, 14, 22, '#f4e4c1', { rx: 6 }), R(x - 30, GYD - 34, 14, 22, '#f4e4c1', { rx: 6 }), R(x + 16, GYD - 34, 14, 22, '#f4e4c1', { rx: 6 }), R(x + 42, GYD - 34, 14, 22, '#f4e4c1', { rx: 6 }),
-      R(x - 80, GYD - 62, 160, 5, '#6c8aa0', { rx: 2 }), R(x - 78, GYD - 57, 3, 57, '#6c8aa0'), R(x + 75, GYD - 57, 3, 57, '#6c8aa0'));
-  }
-  function sDocklands(x) {
-    const g = G(null);
-    // observation wheel behind the wharf
-    g.append(CI(x + 40, GYD - 74, 46, 'none', { stroke: '#cfe3ee', 'stroke-width': 3, opacity: 0.85 }), CI(x + 40, GYD - 74, 5, '#cfe3ee'));
-    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; g.append(LN(x + 40, GYD - 74, x + 40 + 46 * Math.cos(a), GYD - 74 + 46 * Math.sin(a), '#9fbccb', 1.2), R(x + 40 + 46 * Math.cos(a) - 3, GYD - 74 + 46 * Math.sin(a) - 3, 6, 6, COL.coral, { rx: 2 })); }
-    g.append(LN(x + 40, GYD - 74, x + 22, GYD, '#9fbccb', 3), LN(x + 40, GYD - 74, x + 58, GYD, '#9fbccb', 3));
-    g.append(R(x - 76, GYD - 10, 110, 7, '#7a5424', { rx: 2 }));
-    [-66, -30, 6].forEach(dx => g.append(R(x + dx, GYD - 3, 5, 20, '#4a3418')));
-    g.append(R(x - 60, GYD - 44, 48, 34, '#2f4f68'), R(x - 52, GYD - 36, 12, 14, '#a9d8ee', { rx: 2 }), R(x - 32, GYD - 36, 12, 14, '#a9d8ee', { rx: 2 }), R(x - 64, GYD - 50, 56, 6, '#1d3547', { rx: 2 }),
-      LN(x - 4, GYD - 10, x - 4, GYD - 62, '#c3ccd3', 2.5), PA('M' + (x - 4) + ' ' + (GYD - 62) + ' l20 6 l-20 6 Z', COL.coral));
-    return g;
-  }
-  function sEureka(x) {
-    const g = G(null);
-    g.append(R(x - 70, GYD - 46, 34, 46, '#2f4f68'), R(x + 40, GYD - 58, 40, 58, '#27425a'));
-    for (let i = 0; i < 4; i++) { g.append(R(x - 64, GYD - 40 + i * 10, 6, 4, COL.sun, { opacity: 0.7 }), R(x - 52, GYD - 40 + i * 10, 6, 4, COL.sun, { opacity: 0.5 }), R(x + 48, GYD - 52 + i * 12, 6, 5, COL.sun, { opacity: 0.6 }), R(x + 62, GYD - 52 + i * 12, 6, 5, COL.sun, { opacity: 0.4 })); }
-    g.append(R(x - 18, GYD - 140, 36, 140, '#2c5f86'), R(x - 18, GYD - 140, 36, 22, '#e6b93a'), R(x - 18, GYD - 106, 36, 5, '#d9382f'), R(x - 18, GYD - 70, 36, 5, '#d9382f'), R(x - 6, GYD - 156, 12, 16, '#e6b93a'), LN(x, GYD - 156, x, GYD - 170, '#c3ccd3', 2));
-    for (let i = 0; i < 9; i++) g.append(R(x - 12, GYD - 128 + i * 12, 4, 6, '#a9d8ee', { opacity: 0.6 }), R(x - 2, GYD - 128 + i * 12, 4, 6, '#a9d8ee', { opacity: 0.6 }), R(x + 8, GYD - 128 + i * 12, 4, 6, '#a9d8ee', { opacity: 0.6 }));
-    g.append(R(x - 100, GYD - 8, 200, 8, '#7a5424', { rx: 2 }));
-    return g;
-  }
-  function stars(totalW) {
-    const g = G(null);
-    for (let i = 0; i < 110; i++) g.append(R(((i * 211) % 997) / 997 * totalW, ((i * 67) % 83) / 83 * (GYD - 40), i % 5 ? 1.2 : 2, i % 5 ? 1.2 : 2, '#fff', { opacity: 0.25 + (i % 4) * 0.15 }));
-    return g;
-  }
-  function southernCrossStars(x) {
-    const g = G({ class: 'sx' }); const P2 = [[0, -8], [0, 20], [-14, 6], [14, 0], [5, 8]];
-    P2.forEach(([dx, dy], i) => { g.append(PA('M' + (x + dx) + ' ' + (24 + dy - 5) + ' l1.6 3.8 l4 .3 l-3 2.7 l1 4 l-3.6 -2.2 l-3.6 2.2 l1 -4 l-3 -2.7 l4 -.3 Z', i === 4 ? '#bcd5e8' : '#fff3c4')); });
-    return g;
-  }
+  // 1. Ingest: three kinds of source feed a stream that lands in storage
+  SCENES[0] = ({ world, screen, GY }) => {
+    const y0 = GY - 110, srcY = [y0 - 130, y0, y0 + 130], cols = [COL.cy, COL.gr, COL.pu];
+    world.append(dbIcon(240, srcY[0], cols[0]), apiIcon(240, srcY[1], cols[1]), fileIcon(240, srcY[2], cols[2]));
+    srcY.forEach((y, i) => world.append(PA('M330 ' + y + ' C520 ' + y + ' 560 ' + y0 + ' 760 ' + y0, 'none', { stroke: COL.line, 'stroke-width': 14, 'stroke-linecap': 'round' })));
+    world.append(pipe(740, 2430, y0, 34));
+    // stream (a message queue): three stacked lanes
+    [-20, 0, 20].forEach(o => world.append(R(1180, y0 + o - 7, 160, 12, '#0f2a44', { rx: 6, stroke: cols[(o + 20) / 20], 'stroke-width': 1.5 })));
+    world.append(label(1260, y0 - 70, 'STREAM'), label(240, y0 - 200, 'SOURCES'), label(1850, y0 - 70, 'SCHEMA CHECK'), label(2540, y0 - 130, 'LANDING ZONE'));
+    world.append(R(1830, y0 - 50, 8, 100, COL.gr, { rx: 3, opacity: 0.7 }), R(1900, y0 - 50, 8, 100, COL.gr, { rx: 3, opacity: 0.7 }), PA('M1830 ' + (y0 - 50) + ' h78', 'none', { stroke: COL.gr, 'stroke-width': 4 }));
+    for (let i = 0; i < 3; i++) world.append(R(2480 + i * 4, y0 - 60 + i * 38, 120, 34, '#13263b', { rx: 5, stroke: COL.cy, 'stroke-width': 2 }), CI(2500 + i * 4, y0 - 43 + i * 38, 4, COL.gr));
+    const N = 30, pk = Array.from({ length: N }, (_, i) => { const r = R(-9, -6, 18, 12, cols[i % 3], { rx: 3 }); world.append(r); return r; });
+    screen.append(TX(36, 54, '01  INGEST', 26, COL.cy), TX(36, 80, 'pull data from databases, APIs and files', 15, COL.mute));
+    return { update(q) { pk.forEach((r, i) => { const ph = frac(q * 1.7 + i / N), x = 330 + ph * 2150, y = ph < 0.2 ? srcY[i % 3] + (y0 - srcY[i % 3]) * sm(ph / 0.2) : y0; r.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); r.setAttribute('opacity', ph > 0.97 ? 0 : 1); }); } };
+  };
+
+  // 2. SQL: two tables are joined, filtered and grouped
+  SCENES[1] = ({ world, screen, GY, vw }) => {
+    const y0 = GY - 110;
+    world.append(pipe(200, 2300, y0, 34), label(300, y0 - 150, 'orders'), label(300, y0 + 175, 'customers'), label(920, y0 - 70, 'JOIN'), label(1500, y0 - 70, 'WHERE'), label(2080, y0 - 70, 'GROUP BY'));
+    world.append(PA('M200 ' + (y0 - 80) + ' C500 ' + (y0 - 80) + ' 600 ' + y0 + ' 880 ' + y0, 'none', { stroke: COL.line, 'stroke-width': 14, 'stroke-linecap': 'round' }), PA('M200 ' + (y0 + 80) + ' C500 ' + (y0 + 80) + ' 600 ' + y0 + ' 880 ' + y0, 'none', { stroke: COL.line, 'stroke-width': 14, 'stroke-linecap': 'round' }));
+    world.append(CI(920, y0, 44, COL.panel, { stroke: COL.am, 'stroke-width': 3 }), TX(920, y0 + 12, '⋈', 40, COL.am, 'middle'));
+    world.append(PA('M1440 ' + (y0 - 60) + ' h120 l-44 56 v60 h-32 v-60 Z', COL.panel, { stroke: COL.cy, 'stroke-width': 3 }));
+    world.append(R(2060, y0 - 40, 110, 80, COL.panel, { rx: 8, stroke: COL.gr, 'stroke-width': 3 }), ...[0, 1, 2].map(i => R(2076 + i * 28, y0 - 24, 20, 48, COL.gr, { opacity: 0.35, rx: 3 })));
+    const bars = [0.5, 0.9, 0.65, 1].map((v, i) => { const b = R(2400 + i * 58, GY - 40, 40, 4, i % 2 ? COL.cy : COL.gr, { rx: 4 }); world.append(b); return [b, v]; });
+    world.append(LN(2380, GY - 36, 2640, GY - 36, COL.line, 3), label(2510, GY + 10, 'RESULT'));
+    const N = 34, pk = Array.from({ length: N }, (_, i) => { const r = R(-9, -6, 18, 12, i % 2 ? COL.cy : COL.pu, { rx: 3 }); world.append(r); return { r, bad: i % 4 === 3 }; });
+    // the query, typed out on the screen
+    const lines = ['SELECT c.region, SUM(o.amount)', 'FROM orders o', 'JOIN customers c ON o.cid = c.id', "WHERE o.status = 'ok'", 'GROUP BY c.region;'];
+    const cw = Math.min(vw - 72, 470), card = G(null, R(30, 96, cw, 142, '#050c16', { rx: 10, stroke: COL.line, 'stroke-width': 2, opacity: 0.94 }));
+    const tl = lines.map((l, i) => { const t = TX(48, 128 + i * 26, '', 15, i === 0 || i === 4 ? COL.cy : '#cfe4f2'); card.append(t); return t; });
+    screen.append(TX(36, 54, '02  TRANSFORM WITH SQL', 26, COL.cy), TX(36, 80, 'join, filter and aggregate', 15, COL.mute), card);
+    return { update(q) {
+      const total = lines.join('').length; let n = Math.floor(clamp(q * 1.25, 0, 1) * total);
+      tl.forEach((t, i) => { const take = clamp(n, 0, lines[i].length); t.textContent = lines[i].slice(0, take); n -= lines[i].length; });
+      pk.forEach(({ r, bad }, i) => {
+        const ph = frac(q * 1.5 + i / N), side = i % 2 ? 1 : -1;
+        let x, y = y0, op = 1;
+        if (ph < 0.3) { const u = sm(ph / 0.3); x = 220 + u * 660; y = y0 + side * 80 * (1 - u); }
+        else { x = 880 + (ph - 0.3) / 0.7 * 1280; if (bad && x > 1500) { y = y0 + (x - 1500) * 0.9; op = clamp(1 - (x - 1500) / 260, 0, 1); } }
+        r.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); r.setAttribute('fill', bad && x > 1450 ? COL.rd : (ph > 0.3 ? (i % 2 ? COL.cy : COL.pu) : (i % 2 ? COL.cy : COL.pu))); r.setAttribute('opacity', ph > 0.97 ? 0 : op);
+      });
+      bars.forEach(([b, v]) => { const hh = 4 + 150 * v * sm((q - 0.25) / 0.6); b.setAttribute('height', hh.toFixed(1)); b.setAttribute('y', (GY - 36 - hh).toFixed(1)); });
+    } };
+  };
+
+  // 3. Lakehouse: bronze, silver and gold layers
+  SCENES[2] = ({ world, screen, GY }) => {
+    const y0 = GY - 100, tiers = [['BRONZE', 'raw', '#cd7f32', 520], ['SILVER', 'cleaned', '#c6d2dc', 1450], ['GOLD', 'ready for BI', COL.am, 2380]];
+    world.append(pipe(150, 2700, y0, 30));
+    tiers.forEach(([n, d, c, x]) => {
+      world.append(PA('M' + (x - 130) + ' ' + (y0 - 130) + ' h260 l-30 260 h-200 Z', COL.panel, { stroke: c, 'stroke-width': 3 }), R(x - 118, y0 - 20, 236, 128, c, { opacity: 0.18 }), label(x, y0 - 150, n + ' LAYER', c), TX(x, y0 + 160, d, 15, COL.mute, 'middle'));
+      world.append(TX(x, y0 + 10, 'Δ', 38, c, 'middle', { opacity: 0.8 }));
+    });
+    // a small compute cluster that blinks above the silver layer
+    const lights = []; for (let i = 0; i < 6; i++) { const bx = 1330 + i * 40; world.append(R(bx, y0 - 270, 32, 54, '#13263b', { rx: 4, stroke: COL.cy, 'stroke-width': 1.5 })); const l = CI(bx + 16, y0 - 250, 4, COL.gr); world.append(l, R(bx + 6, y0 - 238, 20, 4, COL.line)); lights.push(l); }
+    world.append(label(1450, y0 - 292, 'SPARK CLUSTER'));
+    const N = 40, pk = Array.from({ length: N }, (_, i) => { const r = R(-8, -6, 16, 12, '#cd7f32', { rx: 3 }); world.append(r); return r; });
+    screen.append(TX(36, 54, '03  LAKEHOUSE', 26, COL.cy), TX(36, 80, 'bronze to silver to gold, clean as it goes', 15, COL.mute));
+    return { update(q, t) {
+      lights.forEach((l, i) => l.setAttribute('fill', Math.sin(t / 160 + i * 1.7) > 0 ? COL.gr : '#1a4a3a'));
+      pk.forEach((r, i) => { const ph = frac(q * 1.2 + i / N), x = 160 + ph * 2540, y = y0 + Math.sin(ph * 40 + i) * (ph < 0.3 ? 9 : ph < 0.62 ? 3 : 0); const c = x < 900 ? mix('#cd7f32', '#8a8f98', (i % 5) / 5) : x < 1900 ? mix('#c6d2dc', '#e9eef2', clamp((x - 900) / 800, 0, 1)) : mix('#e9eef2', COL.am, clamp((x - 1900) / 500, 0, 1));
+        r.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); r.setAttribute('fill', c); r.setAttribute('opacity', ph > 0.97 ? 0 : 1); });
+    } };
+  };
+
+  // 4. Data quality: checks that let the good rows through and quarantine the bad ones
+  SCENES[3] = ({ world, screen, GY }) => {
+    const y0 = GY - 90, gates = [['NOT NULL', 800], ['UNIQUE', 1350], ['VALID RANGE', 1900]];
+    world.append(pipe(150, 2450, y0, 30));
+    const lamps = gates.map(([n, x]) => { world.append(PA('M' + (x - 50) + ' ' + (y0 + 40) + ' V' + (y0 - 40) + ' a50 50 0 0 1 100 0 V' + (y0 + 40), 'none', { stroke: COL.cy, 'stroke-width': 4 }), label(x, y0 + 80, n, COL.cy)); const l = CI(x, y0 - 70, 9, '#1a4a3a', { stroke: COL.cy, 'stroke-width': 2 }); world.append(l); return l; });
+    world.append(R(1250, y0 - 250, 200, 90, '#1a0d16', { rx: 8, stroke: COL.rd, 'stroke-width': 2.5 }), label(1350, y0 - 262, 'QUARANTINE', COL.rd));
+    const qcount = TX(1350, y0 - 192, '0', 40, COL.rd, 'middle'); world.append(qcount);
+    world.append(R(2520, y0 - 70, 190, 140, COL.panel, { rx: 12, stroke: COL.gr, 'stroke-width': 3 }), PA('M2570 ' + y0 + ' l26 26 l56 -56', 'none', { stroke: COL.gr, 'stroke-width': 10, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }), label(2615, y0 + 112, 'TRUSTED', COL.gr));
+    const N = 36, pk = Array.from({ length: N }, (_, i) => { const r = R(-9, -6, 18, 12, COL.cy, { rx: 3 }); world.append(r); return { r, bad: i % 3 === 1, gate: (i * 7) % 3 }; });
+    screen.append(TX(36, 54, '04  QUALITY CHECKS', 26, COL.cy), TX(36, 80, 'good rows pass, bad rows are quarantined', 15, COL.mute));
+    return { update(q, t) {
+      let rejected = 0;
+      pk.forEach(({ r, bad, gate }, i) => {
+        const ph = frac(q * 1.3 + i / N), x = 170 + ph * 2300, gx = gates[gate][1];
+        let y = y0, c = COL.cy, op = 1;
+        if (bad && x > gx) { const d = x - gx; y = y0 - d * 0.55; c = COL.rd; op = clamp(1 - d / 380, 0, 1); if (d < 60) rejected++; }
+        else if (x > gates[2][1] + 60) c = COL.gr;
+        r.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ')'); r.setAttribute('fill', c); r.setAttribute('opacity', ph > 0.97 ? 0 : op);
+      });
+      qcount.textContent = String(Math.floor(q * 12));
+      lamps.forEach((l, i) => l.setAttribute('fill', Math.sin(t / 220 + i * 2) > 0.2 ? COL.gr : COL.am));
+    } };
+  };
+
+  // 5. AI: robots fetch the right tables from a huge schema and feed a language model
+  SCENES[4] = ({ world, screen, GY }) => {
+    const y0 = GY;
+    // 1,200+ tables on shelves
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 14; c++) world.append(tableIcon(150 + c * 38, y0 - 330 + r * 40, 26, '#34536e', '#0f2336'));
+    world.append(label(410, y0 - 352, '1,200+ TABLES'));
+    const hit = [[3, 2], [4, 3], [8, 1]].map(([c, r]) => { const g = tableIcon(150 + c * 38, y0 - 330 + r * 40, 26, COL.am, '#3a2f0e'); world.append(g); g.style.opacity = 0; return g; });
+    world.append(R(0, y0, WL, 6, COL.line));
+    // vector database
+    world.append(PA('M1230 ' + (y0 - 150) + ' v120 a60 18 0 0 0 120 0 v-120 Z', COL.panel, { stroke: COL.pu, 'stroke-width': 3 }), sv('ellipse', { cx: 1290, cy: y0 - 150, rx: 60, ry: 18, fill: '#1b1740', stroke: COL.pu, 'stroke-width': 3 }),
+      ...[0, 1, 2].map(i => CI(1260 + i * 30, y0 - 100 + (i % 2) * 22, 5, COL.pu)), label(1290, y0 - 190, 'VECTOR DB', COL.pu));
+    // language model chip
+    const chip = R(1810, y0 - 170, 150, 110, '#0b1626', { rx: 12, stroke: COL.cy, 'stroke-width': 3 });
+    world.append(chip, ...[0, 1, 2, 3].map(i => LN(1830 + i * 30, y0 - 170, 1830 + i * 30, y0 - 190, COL.cy, 3)), ...[0, 1, 2, 3].map(i => LN(1830 + i * 30, y0 - 60, 1830 + i * 30, y0 - 40, COL.cy, 3)), TX(1885, y0 - 100, 'LLM', 34, COL.cy, 'middle'), label(1885, y0 - 208, 'LANGUAGE MODEL', COL.cy));
+    // answer: a SQL card and a chart
+    world.append(R(2330, y0 - 230, 360, 200, '#050c16', { rx: 12, stroke: COL.gr, 'stroke-width': 3 }), TX(2350, y0 - 196, 'SELECT suburb, score', 15, COL.gr), TX(2350, y0 - 172, 'FROM liveability', 15, '#cfe4f2'), TX(2350, y0 - 148, 'ORDER BY score DESC;', 15, '#cfe4f2'),
+      ...[0.4, 0.7, 0.55, 0.95].map((v, i) => R(2360 + i * 56, y0 - 50 - 70 * v, 38, 70 * v, i % 2 ? COL.cy : COL.gr, { rx: 3 })), label(2510, y0 - 252, 'ANSWER', COL.gr));
+    const r1 = robot('#5aa9ff'), r2 = robot(COL.pu), r3 = robot('#3ddc97');
+    const bubble = G(null, R(-90, -150, 190, 36, '#f4f7fb', { rx: 10 }), PA('M-10 -114 l10 14 l10 -14 Z', '#f4f7fb'), TX(5, -126, 'Which suburbs are liveable?', 10.5, '#0e1a2b', 'middle', { 'font-weight': 700 }));
+    world.append(r1.g, r2.g, r3.g, bubble);
+    screen.append(TX(36, 54, '05  MODEL AND AI', 26, COL.cy), TX(36, 80, 'robots retrieve only the tables a question needs', 15, COL.mute));
+    return { update(q, t) {
+      const a = clamp(q / 0.45, 0, 1), b = clamp((q - 0.4) / 0.4, 0, 1);
+      const x1 = 250 + sm(a) * 1000, carry1 = a > 0.05 && a < 1 && false;
+      walk(r1, x1, y0, a < 1 ? t : 0, a > 0.6, 1);
+      bubble.setAttribute('transform', 'translate(' + x1.toFixed(1) + ' ' + (y0 - 40) + ') scale(1.3)'); bubble.style.opacity = a < 0.55 ? 1 : 0;
+      hit.forEach((g, i) => { g.style.opacity = a > 0.35 + i * 0.1 ? 1 : 0; });
+      walk(r2, 1340 + sm(b) * 480, y0, b > 0 && b < 1 ? t : 0, b > 0.02 && b < 0.98, 1);
+      walk(r3, 2250, y0, 0, false, -1); r3.g.setAttribute('transform', 'translate(2250 ' + (y0 - Math.max(0, Math.sin(t / 150)) * 4 * (q > 0.78 ? 1 : 0)).toFixed(1) + ') scale(-1.6 1.6)');
+      chip.setAttribute('stroke', q > 0.7 ? COL.gr : COL.cy); chip.setAttribute('stroke-width', (3 + (q > 0.55 ? 2 * Math.abs(Math.sin(t / 200)) : 0)).toFixed(1));
+    } };
+  };
+
+  // 6. Deploy: a flying car delivers the resume and the projects, and lands with a boom
+  SCENES[5] = ({ world, screen, GY, vw, VH }) => {
+    for (let l = 0; l < 3; l++) for (let i = 0; i < 26; i++) { const bw = 50 + ((i * 37 + l * 11) % 60), bh = 80 + ((i * 53 + l * 29) % 200) - l * 10; world.append(R(i * 120 + l * 40, GY - bh * (1 + l * 0.12), bw, bh * (1 + l * 0.12), mix('#102236', '#183452', l / 2), { opacity: 0.9 - l * 0.12 }));
+      if (l === 2) for (let j = 0; j < 4; j++) world.append(R(i * 120 + l * 40 + 8 + (j % 2) * 20, GY - bh * 1.24 + 14 + Math.floor(j / 2) * 24, 8, 8, COL.am, { opacity: 0.5 })); }
+    world.append(R(0, GY, WL, 400, '#050c16'));
+    // sky lane with light trails and a landing pad
+    for (let i = 0; i < 14; i++) world.append(R(80 + i * 210, GY - 330 - (i % 3) * 36, 90, 3, i % 2 ? COL.pu : COL.cy, { opacity: 0.35, rx: 2 }));
+    world.append(R(2320, GY - 14, 320, 14, COL.panel, { rx: 5, stroke: COL.cy, 'stroke-width': 3 }), label(2480, GY - 34, 'DEPLOY', COL.cy), CI(2340, GY - 7, 4, COL.gr), CI(2620, GY - 7, 4, COL.gr));
+    const car = flyingCar(), tow = [['Resume', COL.cy, 70], ['ionLens', COL.pu, 60], ['Dashboard', COL.gr, 60]].map(([t, c, w]) => { const d = docSprite(w, t, c); world.append(d); return d; });
+    const tl = tow.map(() => LN(0, 0, 0, 0, 'rgba(155,123,255,.6)', 2, { 'stroke-dasharray': '4 5' })); world.append(...tl, car.g);
+    const parts = Array.from({ length: 46 }, (_, i) => { const p = CI(0, 0, 3 + (i % 4), [COL.am, COL.cy, COL.gr, COL.pu, COL.rd][i % 5]); p.style.opacity = 0; world.append(p); return p; });
+    const ring = CI(0, 0, 10, 'none', { stroke: '#fff', 'stroke-width': 6 }); ring.style.opacity = 0; world.append(ring);
+    const flash = R(0, 0, vw, VH, '#fff'); flash.style.opacity = 0; screen.append(flash);
+    const boom = TX(vw / 2, VH * 0.3, 'BOOM. DEPLOYED.', 40, '#fff', 'middle', { 'font-weight': 700 }); boom.style.opacity = 0;
+    screen.append(TX(36, 54, '06  DEPLOY', 26, COL.cy), TX(36, 80, 'ship the resume and the projects', 15, COL.mute), boom);
+    return { update(q, t) {
+      const fly = clamp(q / 0.78, 0, 1), cx = 330 + sm(fly) * 2000, cy = GY - 300 + Math.sin(t / 260) * 8 + sm(clamp((q - 0.6) / 0.2, 0, 1)) * 190;
+      car.g.setAttribute('transform', 'translate(' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ') rotate(' + (q > 0.6 && q < 0.8 ? 8 : -2) + ') scale(1.5)');
+      car.flame.setAttribute('d', 'M-56 -6 L' + (-84 - Math.random() * 14) + ' -10 L-56 -16 Z');
+      const bx = clamp((q - 0.78) / 0.22, 0, 1), padX = 2480, padY = GY - 20;
+      tow.forEach((d, i) => {
+        const bxp = cx - 120 - i * 78, byp = cy + 4 + Math.sin(t / 240 + i) * 7;
+        if (q < 0.8) { d.setAttribute('transform', 'translate(' + bxp.toFixed(1) + ' ' + byp.toFixed(1) + ') rotate(' + (Math.sin(t / 300 + i) * 5).toFixed(1) + ')'); d.style.opacity = 1; tl[i].setAttribute('x1', cx - 56); tl[i].setAttribute('y1', cy - 6); tl[i].setAttribute('x2', bxp + 30); tl[i].setAttribute('y2', byp); }
+        else { const ang = -2.4 + i * 0.7, d2 = 40 + bx * 260; d.setAttribute('transform', 'translate(' + (padX + Math.cos(ang) * d2).toFixed(1) + ' ' + (padY - 60 + Math.sin(ang) * d2 * 0.9 - bx * 40).toFixed(1) + ') rotate(' + ((ang * 20) * bx).toFixed(1) + ') scale(' + (1 + bx * 0.5) + ')'); d.style.opacity = 1; tl[i].setAttribute('x2', tl[i].getAttribute('x1')); tl[i].setAttribute('y2', tl[i].getAttribute('y1')); }
+      });
+      const e = clamp((q - 0.8) / 0.2, 0, 1);
+      parts.forEach((p, i) => { if (e <= 0) { p.style.opacity = 0; return; } const a = (i / parts.length) * Math.PI * 2, d = e * (140 + (i % 5) * 50); p.setAttribute('cx', (padX + Math.cos(a) * d).toFixed(1)); p.setAttribute('cy', (padY - 40 + Math.sin(a) * d * 0.8).toFixed(1)); p.style.opacity = (1 - e).toFixed(2); });
+      ring.setAttribute('cx', padX); ring.setAttribute('cy', padY - 20); ring.setAttribute('r', (10 + e * 280).toFixed(1)); ring.style.opacity = e > 0 ? (1 - e) * 0.8 : 0;
+      flash.style.opacity = e > 0 && e < 0.25 ? (0.55 * (1 - e / 0.25)).toFixed(2) : 0;
+      boom.style.opacity = e > 0.1 ? clamp(1 - Math.max(0, e - 0.75) * 4, 0, 1).toFixed(2) : 0;
+      car.g.style.opacity = q > 0.82 ? 0.0 : 1;
+    } };
+  };
 
   /* ---------- the bottom bar: a simple route line, one pin per stop ---------- */
   let cur = 0, busy = false, pending = null, streak = 0, lastGo = 0, route = null;
@@ -427,14 +485,14 @@
     return s;
   };
   const routeSvg = sv('svg', { class: 'track-svg', 'aria-hidden': 'true', focusable: 'false' });
-  const stBtns = STAGES.map((s, i) => h('button', { class: 'st', type: 'button', 'aria-label': 'Travel to ' + s.nav + ', ' + s.place, onclick: () => go(i) },
+  const stBtns = STAGES.map((s, i) => h('button', { class: 'st', type: 'button', 'aria-label': 'Go to ' + s.nav + ', ' + s.place, onclick: () => go(i) },
     h('span', null, h('b', { text: s.nav }), h('i', { text: s.place }))));
   const prevBtn = h('button', { class: 'pbtn prev', type: 'button', 'aria-label': 'Previous stop', onclick: () => go(step(-1)) }, arrow(-1));
   const nextBtn = h('button', { class: 'pbtn next', type: 'button', onclick: () => go(step(1) <= LAST ? step(1) : 0) }, arrow(1));
   const hud = h('div', { class: 'hud', 'aria-hidden': 'true' },
-    h('div', { class: 'wide' }, h('small', { id: 'hMode', text: 'Bus' }), h('b', { id: 'hRoute', text: '' })),
-    h('div', null, h('small', { text: 'Distance' }), h('b', { id: 'hKm', text: '' })),
-    h('div', null, h('small', { text: 'Speed' }), h('b', { id: 'hSpd', text: '0 km/h' })));
+    h('div', { class: 'wide' }, h('small', { id: 'hMode', text: 'Pipeline' }), h('b', { id: 'hRoute', text: '' })),
+    h('div', null, h('small', { text: 'Records' }), h('b', { id: 'hKm', text: '0' })),
+    h('div', null, h('small', { text: 'Status' }), h('b', { id: 'hSpd', text: 'OK' })));
   bar.append(routeSvg, ...stBtns, prevBtn, nextBtn);
   document.body.append(hud);
 
@@ -445,7 +503,7 @@
     const xs = STAGES.map((_, i) => padX + i * (W - 2 * padX) / LAST);
     routeSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     routeSvg.replaceChildren();
-    const prog = LN(xs[0], y, xs[0], y, COL.sun, 4, { id: 'prog' });
+    const prog = LN(xs[0], y, xs[0], y, COL.gr, 4, { id: 'prog' });
     const pins = xs.map(x => G({ class: 'pin' }, CI(x, y, 7, 'currentColor', { stroke: '#0b1b29', 'stroke-width': 3 })));
     routeSvg.append(LN(xs[0], y, xs[LAST], y, 'rgba(150,190,210,.35)', 4, { 'stroke-dasharray': '2 8' }), prog, ...pins);
     stBtns.forEach((b, i) => { b.style.left = xs[i] + 'px'; });
@@ -458,88 +516,40 @@
     if (BX) BX.pins.forEach((g, i) => { g.classList.toggle('on', i === cur); g.classList.toggle('done', i < cur); });
   }
 
-  /* =====================================================================
-     THE TRIP SCENE (full screen, between two pages)
-     The vehicle leaves one landmark and rides to the next while hills, trees and
-     buildings slide past at different speeds. Going back plays it mirrored.
-  ===================================================================== */
+  /* ---------- the scene overlay ---------- */
   const ride = $('#ride'), rideSvg = $('#rideSvg');
-  const SEED = n => { let s = n * 9301 + 49297; return () => (s = (s * 9301 + 49297) % 233280) / 233280; };
-  const VS = 2.1, LS = 1.9;
+  const LEGS = [
+    { name: 'Ingest', note: 'database, API and files', rows: 48200 },
+    { name: 'SQL transform', note: 'join, filter, group', rows: 31750 },
+    { name: 'Lakehouse', note: 'bronze, silver, gold', rows: 29400 },
+    { name: 'Quality checks', note: 'quarantine bad rows', rows: 29388 },
+    { name: 'AI retrieval', note: 'robots fetch the right tables', rows: 1204 },
+    { name: 'Deploy', note: 'resume and projects shipped', rows: 7 }
+  ];
 
-  function drawScene(k, dir) {
+  function drawScene(k) {
     const r = ride.getBoundingClientRect();
     if (!r.width || !r.height) return null;
-    const vw = r.width < 700 ? 560 : 1000, VH = clamp(vw * r.height / r.width, 420, 1100), GY = VH * 0.74;
+    const vw = r.width < 700 ? 560 : 1000, VH = clamp(vw * r.height / r.width, 420, 1100), GY = VH * 0.8;
     rideSvg.setAttribute('viewBox', '0 0 ' + vw + ' ' + VH.toFixed(1));
     rideSvg.replaceChildren();
-    const L = LEGS[k], dep = dir > 0 ? k : k + 1, arr = dir > 0 ? k + 1 : k;
-    const x0 = 520, x1 = 2520, camS = x0 - vw * 0.3, camE = x1 - vw * 0.52;
-    const rnd = SEED(k + 3);
-
-    const defs = sv('defs');
-    const sky = sv('linearGradient', { id: 'rsky', x1: 0, y1: 0, x2: 0, y2: 1 });
-    [['0', '#08121f'], ['.55', '#173a52'], ['1', '#c0643c']].forEach(([o, c]) => sky.append(sv('stop', { offset: o, 'stop-color': c })));
-    const sea = sv('linearGradient', { id: 'rsea', x1: 0, y1: 0, x2: 0, y2: 1 });
-    [['0', '#2a9bb0'], ['1', '#0e3a50']].forEach(([o, c]) => sea.append(sv('stop', { offset: o, 'stop-color': c })));
-    defs.append(sky, sea);
-
-    const root = sv('g', dir > 0 ? {} : { transform: 'translate(' + vw + ' 0) scale(-1 1)' });
-    root.append(defs, R(0, 0, vw, VH, 'url(#rsky)'));
-    for (let i = 0; i < 70; i++) root.append(R(rnd() * vw, rnd() * GY * 0.6, i % 6 ? 1.5 : 2.6, i % 6 ? 1.5 : 2.6, '#fff', { opacity: 0.25 + rnd() * 0.5 }));
-    root.append(CI(vw * 0.78, GY - 40, 70, '#ffb25a', { opacity: 0.28 }), CI(vw * 0.78, GY - 40, 36, '#ffd98a', { opacity: 0.5 }));
-    const sx = G({ transform: 'translate(' + (vw * 0.14) + ' 30) scale(2.2)' }, southernCrossStars(0)); root.append(sx);
-
-    // far hills
-    const far = G(), mid = G(), world = G();
-    let hd = 'M-200 ' + GY; for (let x = -200; x <= 1400; x += 20) hd += ' L' + x + ' ' + (GY - 60 - 34 * Math.sin(x / 140 + k) - 18 * Math.sin(x / 53)); hd += ' L1400 ' + GY + ' Z';
-    far.append(PA(hd, '#12303f', { opacity: 0.9 }));
-    if (L.surface === 'tram' || k >= 4) { for (let i = 0; i < 9; i++) { const bw = 40 + rnd() * 40, bh = 70 + rnd() * 150; far.append(R(-100 + i * 150, GY - bh, bw, bh, '#183347')); for (let j = 0; j < 5; j++) far.append(R(-96 + i * 150 + (j % 2) * 18, GY - bh + 12 + Math.floor(j / 2) * 22, 8, 8, COL.sun, { opacity: 0.45 })); } }
-    // mid layer: trees, poles or buoys, depending on the surface
-    for (let i = 0; i < 26; i++) {
-      const x = -150 + i * 130 + rnd() * 70;
-      if (L.surface === 'water') { if (i % 3 === 0) mid.append(G({ transform: 'translate(' + x + ' ' + (GY + 14) + ')' }, CI(0, 0, 9, COL.coral), R(-2, -22, 4, 14, '#e8dcc0'))); }
-      else if (L.surface === 'rail') { if (i % 2) mid.append(G({ transform: 'translate(' + x + ' ' + GY + ') scale(' + (1.4 + rnd() * 0.6) + ')' }, gumAt()));
-        else mid.append(G(null, R(x, GY - 90, 4, 90, '#3a4b57'), R(x - 16, GY - 90, 36, 4, '#3a4b57'))); }
-      else if (L.surface === 'tram') { if (i % 2) { const bh = 110 + rnd() * 120; mid.append(R(x, GY - bh, 70, bh, '#1f3b52')); for (let j = 0; j < 5; j++) for (let m = 0; m < 3; m++) mid.append(R(x + 8 + m * 20, GY - bh + 14 + j * 22, 10, 11, rnd() > 0.35 ? COL.sun : '#2c4d66', { opacity: 0.55 })); } else mid.append(R(x, GY - 150, 4, 150, '#3a4b57')); }
-      else { if (i % 3) mid.append(G({ transform: 'translate(' + x + ' ' + GY + ') scale(' + (1.3 + rnd() * 0.7) + ')' }, gumAt())); else { mid.append(R(x, GY - 56, 64, 56, '#a4523a'), PA('M' + (x - 6) + ' ' + (GY - 56) + ' L' + (x + 32) + ' ' + (GY - 84) + ' L' + (x + 70) + ' ' + (GY - 56) + ' Z', '#6b2f22'), R(x + 12, GY - 34, 16, 20, '#ffd24a', { opacity: 0.7 })); } }
-    }
-    function gumAt() { return G(null, R(-3, -44, 6, 44, '#e8dcc0', { rx: 2 }), CI(-12, -50, 15, COL.gum), CI(10, -56, 17, '#37a073'), CI(0, -68, 14, '#2f8a63')); }
-
-    // the world: ground, landmarks, vehicle
-    const surf = G();
-    const tw = 3300;
-    if (L.surface === 'water') {
-      surf.append(R(-200, GY - 6, tw, VH - GY + 80, 'url(#rsea)'));
-      for (let j = 0; j < 5; j++) surf.append(PA('M-200 ' + (GY + 16 + j * 26) + ' q15 -8 30 0 t30 0'.repeat(1) + ' t30 0'.repeat(Math.ceil(tw / 30)), 'none', { stroke: 'rgba(255,255,255,.3)', 'stroke-width': 2 }));
-    } else {
-      surf.append(R(-200, GY, tw, VH - GY + 80, '#0e2230'));
-      if (L.surface === 'rail') { surf.append(R(-200, GY, tw, 22, '#1d2b36')); for (let x = -200; x < tw; x += 26) surf.append(R(x, GY + 4, 9, 16, '#4a3a2a')); surf.append(LN(-200, GY + 4, tw, GY + 4, '#b5c0c8', 3.5), LN(-200, GY + 20, tw, GY + 20, '#b5c0c8', 3.5)); }
-      else { surf.append(R(-200, GY, tw, 34, ROAD), LN(-200, GY + 17, tw, GY + 17, '#e3e9ee', 3, { 'stroke-dasharray': '34 28' })); if (L.surface === 'tram') { surf.append(LN(-200, GY + 6, tw, GY + 6, '#aab6bf', 2.5), LN(-200, GY + 28, tw, GY + 28, '#aab6bf', 2.5)); for (let x = -200; x < tw; x += 190) surf.append(LN(x, GY, x, GY - 230, '#3a4b57', 4)); surf.append(LN(-200, GY - 228, tw, GY - 228, '#5a6b77', 2)); } }
-    }
-    const lm = (fn, x, s) => G({ transform: 'translate(' + x + ' ' + (GY + (L.surface === 'water' ? 0 : 6)) + ') scale(' + s + ') translate(0 ' + (-GYD) + ')' }, fn(0));
-    world.append(surf, lm(LANDMARKS[dep], x0 - 90, LS), lm(LANDMARKS[arr], x1 - 90, LS));
-
-    // fence posts / lamps close to the camera
-    const posts = G();
-    for (let x = 300; x < tw; x += 210) posts.append(R(x, GY + 26, 6, 56, '#16293a'), CI(x + 3, GY + 24, 5, COL.sun, { opacity: 0.8 }));
-    const v = L.build(), holder = sv('g');
-    holder.append(v.g);
-    world.append(holder, posts);
-    root.append(far, mid, world);
-    rideSvg.append(root);
-    return { far, mid, world, holder, v, GY, x0, x1, camS, camE, L, dir, surf };
+    const defs = sv('defs'), bg = sv('linearGradient', { id: 'dbg', x1: 0, y1: 0, x2: 0, y2: 1 });
+    [['0', '#050b14'], ['1', '#0c1d30']].forEach(([o, c]) => bg.append(sv('stop', { offset: o, 'stop-color': c })));
+    const pat = sv('pattern', { id: 'grid', width: 80, height: 80, patternUnits: 'userSpaceOnUse' });
+    pat.append(sv('path', { d: 'M80 0H0V80', fill: 'none', stroke: 'rgba(80,140,190,.12)', 'stroke-width': 1 }));
+    defs.append(bg, pat);
+    const grid = G(null, R(-200, 0, vw + 400 + 160, VH, 'url(#grid)'));
+    const world = G(), screen = G();
+    const sc = SCENES[k]({ world, screen, GY, vw, VH });
+    rideSvg.append(defs, R(0, 0, vw, VH, 'url(#dbg)'), grid, world, screen);
+    return { grid, world, sc, camE: WL - vw, k };
   }
 
   function renderScene(s, q, t) {
-    const cam = s.camS + (s.camE - s.camS) * q, vx = s.x0 + (s.x1 - s.x0) * q;
-    s.far.setAttribute('transform', 'translate(' + (-cam * 0.22).toFixed(1) + ' 0)');
-    s.mid.setAttribute('transform', 'translate(' + (-cam * 0.55).toFixed(1) + ' 0)');
+    const cam = s.camE * q;
     s.world.setAttribute('transform', 'translate(' + (-cam).toFixed(1) + ' 0)');
-    const bob = s.v.bob ? Math.sin(t / 360) * 4 : Math.sin(t / 70) * 0.9 * clamp(Math.sin(Math.PI * q) * 2, 0, 1);
-    const lift = s.L.surface === 'water' ? 18 : s.L.surface === 'rail' ? 14 : s.L.surface === 'tram' ? 10 : 12;
-    s.holder.setAttribute('transform', 'translate(' + vx.toFixed(1) + ' ' + (s.GY + lift + (s.v.y || 0) * VS + bob).toFixed(1) + ') scale(' + VS + ')');
-    s.v.wheels.forEach(w => w.g.setAttribute('transform', 'rotate(' + (vx * 1.9).toFixed(0) + ' ' + w.cx + ' ' + w.cy + ')'));
+    s.grid.setAttribute('transform', 'translate(' + (-(cam * 0.4) % 80).toFixed(1) + ' 0)');
+    s.sc.update(q, t);
   }
 
   const easeIO = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -549,20 +559,19 @@
     return new Promise(resolve => {
       const dir = to > from ? 1 : -1, seq = [];
       if (dir > 0) for (let k = from; k < to; k++) seq.push(k); else for (let k = from - 1; k >= to; k--) seq.push(k);
-      const n = seq.length, per = (n <= 1 ? 2700 : n <= 3 ? 1900 : 1250) * speedUp, total = per * n;
+      const n = seq.length, per = (n <= 1 ? 4200 : n <= 3 ? 3000 : 2000) * speedUp, total = per * n;
       let scene = null, lastLeg = -1, swapped = false;
       ride.classList.add('on');
       const t0 = performance.now();
       const frame = now => {
         const e = Math.max(0, now - t0), i = Math.min(n - 1, Math.floor(e / per)), lt = clamp((e - i * per) / per, 0, 1);
-        if (i !== lastLeg) { lastLeg = i; scene = drawScene(seq[i], dir); emit('coaster:leg', { leg: seq[i], dir }); }
+        if (i !== lastLeg) { lastLeg = i; scene = drawScene(seq[i]); emit('coaster:leg', { leg: seq[i], dir }); }
         if (!scene) { onMid(); ride.classList.remove('on'); resolve(); return; }
-        const q = easeIO(lt);
+        const q = dir > 0 ? lt : 1 - lt;               // going back plays the scene in reverse
         renderScene(scene, q, now);
-        const overall = (i + q) / n;
-        setProg(BX ? BX.xs[from] + (BX.xs[to] - BX.xs[from]) * (e / total > 1 ? 1 : e / total) : 0);
+        setProg(BX ? BX.xs[from] + (BX.xs[to] - BX.xs[from]) * clamp(e / total, 0, 1) : 0);
         emit('coaster:ride', { leg: seq[i], q: lt, t: now, dir });
-        if (!swapped && e / total >= 0.4) { swapped = true; onMid(); }
+        if (!swapped && e / total >= 0.55) { swapped = true; onMid(); }
         if (e < total) requestAnimationFrame(frame);
         else { ride.classList.remove('on'); setTimeout(() => { rideSvg.replaceChildren(); resolve(); }, 330); }
       };
@@ -605,7 +614,7 @@
     const from = cur, now = performance.now();
     streak = now - lastGo < 4000 ? Math.min(streak + 1, 3) : 0;
     lastGo = now;
-    const speedUp = Math.pow(0.82, streak);
+    const speedUp = Math.pow(0.8, streak);
     const swap = () => { cur = to; render(); pages[cur].scrollTop = 0; };
     emit('coaster:start', { from, to, speedUp, streak });
     if (REDUCED) swap(); else await playTrip(from, to, swap, speedUp);
@@ -624,19 +633,16 @@
     isBusy: () => busy, LEGS
   };
 
-  // trip computer: which vehicle, which route, how fast
+  // pipeline monitor: which stage, how many records
   let hudHide = 0;
   window.addEventListener('coaster:start', () => { clearTimeout(hudHide); hud.classList.add('on'); });
-  window.addEventListener('coaster:leg', e => {
-    const L = LEGS[e.detail.leg];
-    $('#hMode').textContent = L.name; $('#hRoute').textContent = e.detail.dir > 0 ? L.route : L.route.split(' to ').reverse().join(' to ');
-    $('#hKm').textContent = L.km + ' km';
-  });
+  window.addEventListener('coaster:leg', e => { const L = LEGS[e.detail.leg]; $('#hMode').textContent = 'Stage: ' + L.name; $('#hRoute').textContent = L.note; });
   window.addEventListener('coaster:ride', e => {
-    const env = clamp(Math.sin(Math.PI * e.detail.q) * 1.8, 0, 1);
-    $('#hSpd').textContent = Math.round(LEGS[e.detail.leg].speed * env) + ' km/h';
+    const L = LEGS[e.detail.leg], p = e.detail.dir > 0 ? e.detail.q : 1 - e.detail.q;
+    $('#hKm').textContent = Math.round(L.rows * clamp(p, 0, 1)).toLocaleString();
+    $('#hSpd').textContent = p > 0.97 ? 'DONE' : 'RUNNING';
   });
-  window.addEventListener('coaster:end', () => { $('#hSpd').textContent = '0 km/h'; hudHide = setTimeout(() => { if (!busy) hud.classList.remove('on'); }, 900); });
+  window.addEventListener('coaster:end', () => { $('#hSpd').textContent = 'OK'; hudHide = setTimeout(() => { if (!busy) hud.classList.remove('on'); }, 900); });
 
   document.addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('a[href^="#"]');

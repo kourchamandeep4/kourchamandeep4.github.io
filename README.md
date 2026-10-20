@@ -1,13 +1,22 @@
-# Australian journey portfolio
+# Data pipeline portfolio
 
-A one-screen-at-a-time portfolio told as a trip from a Geelong bus stop to Flinders Street in Melbourne. Each page is a stop: Geelong bus stop (Start), Geelong Station (About), aboard the train (Skills), a Williamstown cafe (Projects), the Docklands ferry wharf (Awards), Southbank and the Eureka Tower (Experience) and Flinders Street (Contact). Click the big Next arrow, click a stop on the route bar, press the arrow keys, or swipe, and a full-screen scene plays between the two pages: the vehicle for that leg (bus, train, taxi, ferry, tram or bike) rides from one landmark to the next while the scenery slides past. Going back plays the scene the other way.
+A one-screen-at-a-time portfolio built as a data pipeline. Each page is a stage: Source (Start), Ingest (About), Transform (Skills), Gold layer and dashboard (Projects), Quality (Experience), Model and AI (Awards) and Deploy (Contact). Click the big Next arrow, click a stage on the pipeline bar, press the arrow keys, or swipe, and a full-screen scene plays between the two pages:
+
+1. Ingest: records stream from a database, an API and files into storage.
+2. SQL: two tables are joined, filtered and grouped, with the query typing out on screen.
+3. Lakehouse: records move through bronze, silver and gold layers.
+4. Quality checks: bad records are quarantined, good ones pass.
+5. AI: robots fetch only the tables a question needs from a huge schema and feed a language model.
+6. Deploy: a flying car delivers the resume and the projects, and lands with a boom.
+
+Going back plays the scene in reverse. The Projects page is a dashboard with KPI tiles, before and after bars, a donut and a tool filter, all driven by `dashboard` in `profile.js`.
 
 Extras, all running in the browser with no server:
 
-- **Trip computer:** vehicle, route, distance and speed while you travel. Click quickly and the vehicles speed up.
-- **Pick your trip:** on the first page, visitors choose AI, dashboards or data quality. Matching projects and skills are highlighted and the Next arrow follows a shorter route. Edit `interests` in `profile.js`.
-- **Ask the driver:** a chat guide that answers from the content in `profile.js` and jumps to the right stop. It is keyword search, not an AI model, so it only knows what is on your site.
-- **Postcard:** on the Contact page, visitors download a "Greetings from..." postcard with their stops, distance and visit time.
+- **Pipeline monitor:** stage name, records and status while a scene plays. Click quickly and the scenes speed up.
+- **Pick your path:** on the first page, visitors choose AI, dashboards or data quality. Matching projects and skills are highlighted and the Next arrow follows a shorter pipeline. Edit `interests` in `profile.js`.
+- **Ask the pipeline:** a chat guide that answers from the content in `profile.js` and jumps to the right stage. It is keyword search, not an AI model, so it only knows what is on your site.
+- **Run report:** on the Contact page, visitors download a picture of the pipeline they ran.
 
 No build step and no dependencies. It is plain HTML, CSS and JavaScript.
 
@@ -31,9 +40,9 @@ To preview it, open `index.html` in a browser. Fonts load from Google Fonts, so 
 
 ## Change the look
 
-The colours and fonts are variables at the top of `style.css` (`--bg`, `--coral`, `--sun`, `--cyan` and the `--f-` font families). Stop names are in `STAGES` at the top of `app.js`. The vehicles are the `vBus`, `vTrain`, `vTaxi`, `vFerry`, `vTram` and `vBike` functions, and the landmarks are the `s...` functions next to them.
+The colours and fonts are variables at the top of `style.css`. Stage names are in `STAGES` at the top of `app.js`. Each scene is one function in the `SCENES` list.
 
 ## Notes
 
-- The journey respects the "reduce motion" setting by skipping the animation. Long pages (Projects, Experience) scroll inside their own page.
+- The scenes respect the "reduce motion" setting by skipping the animation. Long pages (Projects, Experience) scroll inside their own page.
 - The page needs JavaScript, because every section is built from `profile.js`.

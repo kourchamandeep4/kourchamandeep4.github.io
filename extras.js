@@ -1,7 +1,7 @@
-/* Extras for the Australian journey, loaded after app.js:
-   1. Pick your trip: choose an interest and get an express route
-   2. Ask the driver: a guide that answers from the content of this site
-   3. Postcard: a downloadable card with the visitor's trip
+/* Extras for the data pipeline, loaded after app.js:
+   1. Pick your path: choose an interest and get an express route
+   2. Ask the pipeline: a guide that answers from the content of this site
+   3. Run report: a downloadable card with the visitor's run
 
    Everything runs in the browser. There is no server and no AI service. */
 (function () {
@@ -27,19 +27,19 @@
   const STAGES = C.STAGES;
   const idxOf = id => STAGES.findIndex(s => s.id === id);
 
-  /* ---------------- trip stats, kept while the page is open ---------------- */
-  const stats = { trips: 0, visited: new Set([0]), km: 0 };
+  /* ---------------- run stats, kept while the page is open ---------------- */
+  const stats = { trips: 0, visited: new Set([0]), rows: 0 };
   window.addEventListener('coaster:end', e => {
     const { from, to } = e.detail; stats.trips++; stats.visited.add(to);
     const a = Math.min(from, to), b = Math.max(from, to);
-    for (let k = a; k < b; k++) stats.km += C.LEGS[k].km;
+    for (let k = a; k < b; k++) stats.rows += C.LEGS[k].rows;
   });
 
   const chatBtn = h('button', { class: 'xbtn primary', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'chat', onclick: () => toggleChat() },
-    h('span', { text: 'Ask the driver' }));
+    h('span', { text: 'Ask the pipeline' }));
   document.body.append(h('div', { class: 'xrow' }, chatBtn));
 
-  /* ---------------- 1. pick your trip ---------------- */
+  /* ---------------- 1. pick your path ---------------- */
   const interests = P.interests || [];
   const matches = (text, kws) => kws.some(k => {
     k = k.toLowerCase();
@@ -68,18 +68,18 @@
     C.setRoute(it ? it.route : null);
     const n = it ? tickets.filter(t => t.classList.contains('match')).length : 0;
     note.textContent = it
-      ? 'Express trip set: ' + it.route.map(id => STAGES[idxOf(id)].nav).join(', ') + '. ' + n + ' of ' + tickets.length + ' projects fit. The Next arrow skips the other stops.'
-      : 'Full trip: every stop, in order.';
+      ? 'Express path set: ' + it.route.map(id => STAGES[idxOf(id)].nav).join(', ') + '. ' + n + ' of ' + tickets.length + ' projects fit. The Next arrow skips the other stages.'
+      : 'Full pipeline: every stage, in order.';
     $$('.pick button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === (it ? it.id : 'all'))));
   }
   if (interests.length) {
     const chips = interests.map(it => h('button', { type: 'button', 'data-id': it.id, 'aria-pressed': 'false', text: it.label, onclick: () => applyPick(it) }));
     chips.push(h('button', { type: 'button', 'data-id': 'all', 'aria-pressed': 'true', text: 'Show me everything', onclick: () => applyPick(null) }));
-    const box = h('div', { class: 'pick' }, h('p', { class: 'pick-q', text: 'What are you here for? Pick a trip and I will shorten the route.' }),
+    const box = h('div', { class: 'pick' }, h('p', { class: 'pick-q', text: 'What are you here for? Pick a path and I will shorten the pipeline.' }),
       h('div', { class: 'chips' }, chips), note);
     const cta = $('#station .cta');
     if (cta) cta.after(box);
-    note.textContent = 'Full trip: every stop, in order.';
+    note.textContent = 'Full pipeline: every stage, in order.';
   }
 
   /* ---------------- 2. ask the driver ---------------- */
@@ -154,14 +154,14 @@
       msg('bot', e.answer, h('button', { class: 'show', type: 'button', text: 'Show me: ' + stop.nav, onclick: () => { toggleChat(false); C.go(idxOf(e.go)); } }));
     });
   }
-  const panel = h('section', { class: 'chat', id: 'chat', hidden: true, 'aria-label': 'Ask the driver' },
-    h('header', null, h('b', { text: 'Ask the driver' }), h('button', { type: 'button', class: 'x', 'aria-label': 'Close chat', text: '×', onclick: () => toggleChat(false) })),
+  const panel = h('section', { class: 'chat', id: 'chat', hidden: true, 'aria-label': 'Ask the pipeline' },
+    h('header', null, h('b', { text: 'Ask the pipeline' }), h('button', { type: 'button', class: 'x', 'aria-label': 'Close chat', text: '×', onclick: () => toggleChat(false) })),
     log,
     h('div', { class: 'chips' }, chips2.map(c => h('button', { type: 'button', text: c, onclick: () => ask(c) }))),
     h('form', { onsubmit: e => { e.preventDefault(); ask(input.value); input.value = ''; } }, input, h('button', { type: 'submit', class: 'send', text: 'Ask' })),
     h('p', { class: 'chat-note', text: 'Answers come from this site\'s own content. This is a search, not an AI model.' }));
   document.body.append(panel);
-  msg('bot', 'Hi, I am your driver for the trip. Ask me about projects, skills, experience or how to get in touch, and I will take you to the right stop.');
+  msg('bot', 'Hi, I am the pipeline bot. Ask me about projects, skills, experience or how to get in touch, and I will take you to the right stop.');
 
   function toggleChat(force) {
     const open = force === undefined ? panel.hidden : force;
@@ -171,68 +171,54 @@
   }
   panel.addEventListener('keydown', e => { if (e.key === 'Escape') toggleChat(false); });
 
-  /* ---------------- 3. postcard ---------------- */
-  const who = h('input', { type: 'text', placeholder: 'Your name or company (optional)', maxlength: '40', 'aria-label': 'Name for the postcard' });
-  const photoBtn = h('button', { class: 'btn primary', type: 'button', text: 'Download my postcard' });
+  /* ---------------- 3. run report ---------------- */
+  const who = h('input', { type: 'text', placeholder: 'Your name or company (optional)', maxlength: '40', 'aria-label': 'Name for the run report' });
+  const photoBtn = h('button', { class: 'btn primary', type: 'button', text: 'Download my run report' });
   const photoBox = h('div', { class: 'photo' }, h('h3', { text: 'Take a souvenir' }),
-    h('p', { text: 'Your postcard shows the stops you visited, the distance you covered and when you dropped by. It is made in your browser and goes nowhere.' }),
+    h('p', { text: 'Your run report is a picture of the pipeline you just ran: stages passed, records processed and the time of your visit. It is made in your browser and goes nowhere.' }),
     h('div', { class: 'photo-row' }, who, photoBtn));
   const foot = $('#contact .foot-note');
   if (foot) foot.before(photoBox);
 
   async function makePhoto() {
-    try { await document.fonts.load('48px "Bowlby One"'); await document.fonts.load('600 24px "Bricolage Grotesque"'); } catch (e) { /* fall back */ }
-    const W = 1200, H = 800, c = document.createElement('canvas'); c.width = W; c.height = H;
-    const g = c.getContext('2d');
-    g.fillStyle = '#f4e4c1'; g.fillRect(0, 0, W, H);
-    // picture side (left): Melbourne at dusk
-    const pw = 700, sky = g.createLinearGradient(0, 0, 0, 520); sky.addColorStop(0, '#0a1a2a'); sky.addColorStop(0.6, '#2a5a78'); sky.addColorStop(1, '#e58a52');
-    g.fillStyle = sky; g.fillRect(30, 30, pw, 560);
-    g.fillStyle = '#fff'; for (let i = 0; i < 60; i++) { g.globalAlpha = 0.3 + (i % 4) * 0.15; g.fillRect(30 + (i * 137) % pw, 30 + (i * 53) % 300, 2, 2); }
-    g.globalAlpha = 1;
-    g.fillStyle = 'rgba(255,217,138,.85)'; g.beginPath(); g.arc(560, 440, 40, 0, 7); g.fill();
-    g.fillStyle = '#16465e'; g.fillRect(30, 480, pw, 110);
-    g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 2;
-    for (let k = 0; k < 4; k++) { g.beginPath(); for (let x = 30; x <= 730; x += 20) g.lineTo(x, 500 + k * 22 + (x / 20 % 2 ? -4 : 4)); g.stroke(); }
-    // Melbourne at dusk: skyline, Eureka Tower, Flinders Street Station
-    g.fillStyle = '#183347';
-    [[40, 60, 120], [110, 50, 90], [170, 44, 140], [560, 56, 110], [626, 48, 150], [684, 40, 96]].forEach(([x0, w, hh]) => g.fillRect(x0 + 0, 480 - hh, w, hh));
-    g.fillStyle = '#ffd24a'; for (let i = 0; i < 40; i++) { g.globalAlpha = 0.4; g.fillRect(48 + (i * 37) % 680, 360 + (i * 23) % 110, 5, 6); } g.globalAlpha = 1;
-    g.fillStyle = '#2c5f86'; g.fillRect(400, 270, 46, 210); g.fillStyle = '#e6b93a'; g.fillRect(400, 270, 46, 30); g.fillRect(412, 250, 22, 20);
-    g.fillStyle = '#d9382f'; g.fillRect(400, 330, 46, 6); g.fillRect(400, 400, 46, 6); g.strokeStyle = '#c3ccd3'; g.lineWidth = 3; g.beginPath(); g.moveTo(423, 250); g.lineTo(423, 220); g.stroke();
-    g.fillStyle = '#c98f3f'; g.fillRect(230, 400, 150, 80); g.fillStyle = '#7fc4b5'; g.beginPath(); g.arc(305, 392, 26, Math.PI, 0); g.fill();
-    g.fillStyle = '#c98f3f'; g.fillRect(285, 392, 40, 40); g.fillStyle = '#fff3dc'; g.beginPath(); g.arc(305, 418, 10, 0, 7); g.fill();
-    g.fillStyle = '#7a5424'; for (let i = 0; i < 6; i++) g.fillRect(240 + i * 24, 440, 12, 40);
-    // stamp
-    g.save(); g.translate(1040, 120); g.rotate(0.08); g.strokeStyle = '#b5482e'; g.lineWidth = 5; g.strokeRect(-70, -80, 140, 160);
-    g.fillStyle = '#b5482e'; g.font = '700 22px "Bricolage Grotesque", system-ui, sans-serif'; g.textAlign = 'center';
-    g.fillText('AUSTRALIA', 0, -40); g.font = '400 54px "Bowlby One", "Arial Black", sans-serif'; g.fillText(String(stats.visited.size), 0, 22); g.font = '600 20px "Bricolage Grotesque", system-ui, sans-serif'; g.fillText('stops visited', 0, 56); g.restore();
-    // message side (right)
-    g.textAlign = 'left'; g.fillStyle = '#0c1c2b'; g.font = '48px "Bowlby One", "Arial Black", sans-serif';
+    try { await document.fonts.load('40px "Bowlby One"'); await document.fonts.load('20px "Share Tech Mono"'); } catch (e) { /* fall back */ }
+    const W = 1200, H = 700, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d'), mono = '"Share Tech Mono", ui-monospace, Menlo, monospace';
+    g.fillStyle = '#07101c'; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(80,140,190,.12)'; g.lineWidth = 1;
+    for (let x = 0; x < W; x += 60) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+    for (let y = 0; y < H; y += 60) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    g.fillStyle = '#35e0e8'; g.font = '26px ' + mono; g.fillText('pipeline run report', 60, 70);
+    g.fillStyle = '#f6f3ea'; g.font = '46px "Bowlby One", "Arial Black", sans-serif';
     const vis = who.value.trim() || 'A visitor';
-    const words = ('Greetings from ' + vis).split(' '); let line = '', y = 250;
-    g.font = '40px "Bowlby One", "Arial Black", sans-serif';
-    words.forEach(w => { const t = line ? line + ' ' + w : w; if (g.measureText(t).width > 380 && line) { g.fillText(line, 770, y); line = w; y += 48; } else line = t; });
-    g.fillText(line, 770, y);
-    g.font = '500 22px "Bricolage Grotesque", system-ui, sans-serif'; g.fillStyle = '#2a4a5e';
-    const lines = ['Rode the ' + P.name + ' trip,', 'Geelong to Flinders Street, Melbourne,', stats.km + ' km by bus, train,', 'taxi, ferry, tram and bike.', '', new Date().toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })];
-    lines.forEach((t, i) => g.fillText(t, 770, y + 52 + i * 32));
-    g.strokeStyle = '#8c7a55'; g.lineWidth = 2; g.beginPath(); g.moveTo(745, 140); g.lineTo(745, 590); g.stroke();
-    g.fillStyle = '#b5482e'; g.font = '700 26px "Bricolage Grotesque", system-ui, sans-serif';
-    g.fillText(P.name + ', ' + (P.role || ''), 40, 660);
-    g.fillStyle = '#2a4a5e'; g.font = '500 22px "Bricolage Grotesque", system-ui, sans-serif';
-    g.fillText([P.location, (P.links || {}).email].filter(Boolean).join('   |   '), 40, 700);
+    g.fillText(vis, 60, 140);
+    g.fillStyle = '#5cff9d'; g.font = '34px ' + mono; g.fillText('status: SUCCESS', 60, 200);
+    g.fillStyle = '#a7c0cf'; g.font = '24px ' + mono;
+    const lines = ['pipeline:   ' + P.name + ' / source-to-deploy', 'stages:     ' + stats.visited.size + ' of ' + STAGES.length + ' passed', 'records:    ' + stats.rows.toLocaleString() + ' processed', 'finished:   ' + new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })];
+    lines.forEach((t, i) => g.fillText(t, 60, 262 + i * 40));
+    // the stages, as a row of nodes
+    const nodes = STAGES.length, x0 = 90, x1 = W - 90, y = 520;
+    g.strokeStyle = '#24405c'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+    STAGES.forEach((s, i) => {
+      const x = x0 + i * (x1 - x0) / (nodes - 1), ok = stats.visited.has(i);
+      g.fillStyle = ok ? '#5cff9d' : '#24405c'; g.beginPath(); g.arc(x, y, 16, 0, 7); g.fill();
+      g.fillStyle = '#07101c'; g.font = '700 18px ' + mono; g.textAlign = 'center'; g.fillText(ok ? '\u2713' : '', x, y + 6);
+      g.fillStyle = ok ? '#f6f3ea' : '#7fa3bd'; g.font = '20px ' + mono; g.fillText(s.place, x, y + 52);
+    });
+    g.textAlign = 'left'; g.fillStyle = '#ffc93c'; g.font = '700 26px "Bricolage Grotesque", system-ui, sans-serif';
+    g.fillText(P.name + ', ' + (P.role || ''), 60, 640);
+    g.fillStyle = '#7fa3bd'; g.font = '22px ' + mono; g.textAlign = 'right'; g.fillText([P.location, (P.links || {}).email].filter(Boolean).join('  |  '), W - 60, 640);
     return new Promise(res => c.toBlob(res, 'image/png'));
   }
   photoBtn.addEventListener('click', async () => {
-    photoBtn.disabled = true; photoBtn.textContent = 'Posting it...';
+    photoBtn.disabled = true; photoBtn.textContent = 'Generating report...';
     try {
       const blob = await makePhoto();
-      const a = h('a', { href: URL.createObjectURL(blob), download: 'postcard-from-australia.png' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: 'pipeline-run-report.png' });
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       photoBtn.textContent = 'Saved. Thanks for visiting!';
-    } catch (e) { photoBtn.textContent = 'Could not make the postcard'; }
-    setTimeout(() => { photoBtn.disabled = false; photoBtn.textContent = 'Download my postcard'; }, 2500);
+    } catch (e) { photoBtn.textContent = 'Could not make the report'; }
+    setTimeout(() => { photoBtn.disabled = false; photoBtn.textContent = 'Download my run report'; }, 2500);
   });
 })();
